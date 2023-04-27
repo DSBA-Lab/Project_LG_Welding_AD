@@ -74,7 +74,7 @@ def peak_time(sequence):
 
 def diff_peak(sequence):
     peak_value = peak(sequence)
-    return peak_value - sequence[0]
+    return peak_value - sequence[-1]
 
 
 def reach_time(sequence, alpha: float = 0.5):
@@ -176,7 +176,6 @@ def vis_feature_extractor(vis_sequence, bead_len):
 
 class ExtractFeatures:
     def __init__(self, filepath):
-        self.file_name = None
         self.result = None
         self.bead_index = None
         self.__data = pd.read_csv(filepath, header=None).dropna(axis=1)
@@ -261,4 +260,3 @@ if __name__ == '__main__':
     extractor = ExtractFeatures(args.filepath)
     extractor.extract(args.verbose)
     extractor.save_json(args.output_dir, encoder=NpEncoder)
-    pdb.set_trace()
