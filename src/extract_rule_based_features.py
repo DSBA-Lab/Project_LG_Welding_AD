@@ -4,7 +4,6 @@ import json
 import argparse
 import os
 import re
-import pdb
 from numpy import ndarray
 
 
@@ -395,7 +394,7 @@ class ExtractFeatures:
         return result
 
     @staticmethod
-    def extract_one_bead(data, start: int, end: int, next_start=None) -> dict:
+    def extract_one_bead(data, start: int=None, end: int=None, next_start=None) -> dict:
         """
         Extract features from one bead
         :param data: np.ndarray
@@ -409,6 +408,8 @@ class ExtractFeatures:
         :return: dict
             features dict
         """
+        start = 0 if start is None else start
+        end = len(data['LO']) if end is None else end
         next_start = end if next_start is None else next_start
 
         lo_sequence = np.array(data['LO'][start:end])
