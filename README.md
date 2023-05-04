@@ -12,4 +12,4 @@ bash scripts/rule_based.sh
 python extract_rule_based_features.py --filepath [FILEPATH] --output_dir [OUTPUTPATH]
 ```
 
-Rule_based.ipynb 파일에 간단한 예제도 작성하였습니다.
+rule_based_feature.ipynb 파일에 간단한 예제도 작성하였습니다.
