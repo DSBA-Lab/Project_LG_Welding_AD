@@ -7,7 +7,7 @@ import re
 from numpy import ndarray
 
 
-def detect_bead(signal: np.ndarray, degree: float = 0.3, verbose: bool = False) -> np.ndarray:
+def detect_bead(signal: np.ndarray, degree: float = 0.2, verbose: bool = False) -> np.ndarray:
     """
     bead detection
     :param signal: np.ndarray
@@ -371,7 +371,7 @@ class ExtractFeatures:
         self.file_name = re.search(r'(\w+)(.csv)', filepath).group(1)
 
     @classmethod
-    def extract(cls, data: np.ndarray, verbose: bool = False) -> dict:
+    def extract(cls, data: np.ndarray, degree: float = 0.2, verbose: bool = False) -> dict:
         """
         Extract features from the data
         :param data: np.ndarray
@@ -382,7 +382,7 @@ class ExtractFeatures:
             features dict
         """
         result = dict()
-        bead_index = detect_bead(np.array(data['LO']), verbose=verbose)
+        bead_index = detect_bead(np.array(data['LO']), degree=degree, verbose=verbose)
 
         for i, [start, end] in enumerate(bead_index):
             next_start = end if i == len(bead_index) - 1 else bead_index[i + 1][0]
