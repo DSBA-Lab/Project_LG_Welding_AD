@@ -347,7 +347,7 @@ class ExtractFeatures:
         self.bead_index = None
         self.__data = pd.read_csv(filepath, header=None).dropna(axis=1)
         self.__data.columns = ['LO', 'BR', 'NIR', 'VIS']
-        self.file_name = re.search(r'(\w+)(_Total.csv)', filepath).group(1)
+        self.file_name = re.search(r'(\w+)(.csv)', filepath).group(1)
 
     @property
     def data(self) -> pd.DataFrame:
@@ -368,7 +368,7 @@ class ExtractFeatures:
         """
         self.__data = pd.read_csv(filepath, header=None).dropna(axis=1)
         self.__data.columns = ['LO', 'BR', 'NIR', 'VIS']
-        self.file_name = re.search(r'(\w+)(_Total.csv)', filepath).group(1)
+        self.file_name = re.search(r'(\w+)(.csv)', filepath).group(1)
 
     @classmethod
     def extract(cls, data: np.ndarray, verbose: bool = False) -> dict:
