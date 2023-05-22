@@ -1,0 +1,39 @@
+# config.yaml
+
+path: ./
+log_dir: ./logs
+workers: 8
+
+# dataset
+PSM:
+  train_path: data/PSM/train.csv
+  test_path: data/PSM/test.csv
+  test_label_path: data/PSM/test_label.csv
+
+scale: standard
+
+# dataloader parameters
+loader_params:
+  batch_size: 32
+  window_size: 100
+  slide_size: 50
+  shuffle: False
+  num_workers: 8
+  pin_memory: True
+
+# model parameters
+   
+LSTM_VAE:
+    rnn_type: LSTM
+    sequence_length: 100
+    hidden_size: 64
+    hidden_layer_depth: 2
+    latent_length: 20
+    batch_size: 32
+    dropout_rate: 0.3
+    optim: adamw
+    lr: 0.002
+    lradj: type1
+
+
+#여기
