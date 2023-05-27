@@ -315,7 +315,7 @@ class LSTM_VAE(BaseEstimator, nn.Module):
         all_loss=[]
 
         max_index=[]
-        for epoch in tqdm(range(train_epochs), desc='Epochs', position=0, leave=True):
+        for epoch in tqdm(range(train_epochs), desc='Epochs', position=0, leave=True, total=train_epochs):
             iter_count = 0
             train_loss = []
             train_score = []
@@ -323,7 +323,7 @@ class LSTM_VAE(BaseEstimator, nn.Module):
             self.train()
             epoch_time = time.time()
             
-            for batch_idx, batch in tqdm(enumerate(train_loader), desc='Batches', position=0, leave=False, total=len(train_loader)):
+            for batch_idx, batch in tqdm(enumerate(train_loader), desc=f'Epochs_{str(epoch+1)}/{train_epochs}: Batches', position=0, leave=False, total=len(train_loader)):
                 iter_count += 1
                 batch_x = batch['given'].float().to(self.device)
                 batch_y = batch['answer'].float().to(self.device)
