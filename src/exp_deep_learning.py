@@ -18,9 +18,6 @@ from models import LSTM_VAE, MadGAN, UsadModel, TAnoGAN_MOCAP
 from omegaconf import OmegaConf
 from utils import slice_bead_data, get_window_bead_num, set_seed
 
-import warnings
-warnings.filterwarnings("ignore")
-
 
 def main():
     """
@@ -206,6 +203,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True,
                         choices=['LSTM_VAE', 'USAD', 'MADGAN', 'TAnoGAN'])
+    parser.add_argument('--data_polarity', type=str, required=True, choices=['Anode', 'Cathode'])
     # train options
     parser.add_argument('--epochs', type=int, default=30, help='number of epochs')
     # parser.add_argument('--patience', type=int, default=5, help='early stopping patience')
