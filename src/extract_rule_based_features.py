@@ -29,7 +29,8 @@ def detect_bead(signal: np.ndarray, degree: float = 0.2, verbose: bool = False) 
             if start is None:
                 start, end = i - 1, i - 1
             else:
-                print(f'warning index: {i}')
+                if verbose:
+                    print(f'warning index: {i}')
         # A sharp decrease in the current value over the previous value is considered a end
         elif signal[i - 1] - signal[i] >= max_value * degree:
             if end is not None:
@@ -38,7 +39,8 @@ def detect_bead(signal: np.ndarray, degree: float = 0.2, verbose: bool = False) 
                     print(f"Value at index start: {start}, end: {i}, length: {i - start}")
                 start, end = None, None
             else:
-                print(f'error index: {i}')
+                if verbose:
+                    print(f'error index: {i}')
     print(f'Detected bead num: {len(bead_index)}')
     return np.array(bead_index)
 
