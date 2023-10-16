@@ -22,189 +22,7 @@ import matplotlib.pyplot as plt
 # Decoder class
 # Lambda class
 # Model(LSTM-VAE class)
-
-
-class Encoder(nn.Module):
-    '''
-    Encoder network containing enrolled LSTM/GRU
-
-    :param number_of_features: number of input features
-    :param hidden_size: hidden size of the RNN
-    :param hidden_layer_depth: number of layers in RNN
-    :param latent_length: latent vector length
-    :param dropout: percentage of nodes to dropout
-    :param rnn_type: LSTM/GRU rnn_type
-    '''
-
-    def __init__(self, number_of_features, hidden_size, hidden_layer_depth, latent_length, dropout, rnn_type='LSTM'):
-
-        super(Encoder, self).__init__()
-
-        self.number_of_features = number_of_features
-        self.hidden_size = hidden_size
-        self.hidden_layer_depth = hidden_layer_depth
-        self.latent_length = latent_length
-        self.dropout = dropout
-
-        ## input = feature dimension
-        ## hidden size = 바꿔주고 싶은 hidden dimension
-        ## batch_first = input의 데이터 구조가 batch first로 바뀐다
-        ## RNN에 feed할 때, input의 차원은 [Seq_len, Batch_size, Hidden_size]인데
-        ## batch_first = True라면 ,  [Batch_size, Seq_len, Hidden_size]
-        ## hidden은 다음과 같이 정의 : [num_layers * num_directions, batch, hidden_size]
-        if rnn_type == 'LSTM':
-            self.model = nn.LSTM(input_size=self.number_of_features, \
-                                 hidden_size=self.hidden_size, \
-                                 num_layers=self.hidden_layer_depth, \
-                                 batch_first=True, \
-                                 dropout=self.dropout)
-        elif rnn_type == 'GRU':
-            self.model = nn.GRU(input_size=self.number_of_features, \
-                                hidden_size=self.hidden_size, \
-                                num_layers=self.hidden_layer_depth, \
-                                batch_first=True, \
-                                dropout=self.dropout)
-        else:
-            raise NotImplementedError
-
-    def forward(self, x, hidden):
-        '''
-        Forward propagation of encoder. Given input, outputs the last hidden state of encoder
-
-        :param x: input to the encoder, of shape (batch_size, seq_len, feature_size)
-        :return: last hidden state of encoder, of shape (batch_size, hidden_size)
-        '''
-
-        _, (h_end, c_end) = self.model(x, hidden)
-
-        h_end = h_end[-1, :, :]
-
-        return h_end
-
-
-class Lambda(nn.Module):
-    '''
-    Lambda module converts output of encoder to latent vector
-
-    :param hidden_size: hidden size of the encoder
-    :param latent_length: latent vector length
-    '''
-
-    def __init__(self, hidden_size, latent_length):
-        super(Lambda, self).__init__()
-
-        self.hidden_size = hidden_size
-        self.latent_length = latent_length
-
-        self.hidden_to_mean = nn.Linear(self.hidden_size, self.latent_length)
-        self.hidden_to_logvar = nn.Linear(self.hidden_size, self.latent_length)
-
-        ## 가중치 초기화
-        nn.init.xavier_uniform_(self.hidden_to_mean.weight)
-        nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
-
-    def forward(self, x_encoded):
-        '''
-        Given last hidden state of encoder, passes through a linear layer, and finds the mean and variance
-
-        :param cell_output: last hidden state of encoder
-        :return: latent vector
-        '''
-
-        self.latent_mean = self.hidden_to_mean(x_encoded)
-        self.latent_logvar = self.hidden_to_logvar(x_encoded)
-
-        if self.training:
-            std = torch.exp(0.5 * self.latent_logvar)
-            eps = torch.randn_like(std)
-            return eps.mul(std).add_(self.latent_mean)
-        else:
-            return self.latent_mean
-
-
-class Decoder(nn.Module):
-    '''
-    Converts latent vector into output
-
-    :param sequence_length: length of the input sequence
-    :param batch_size: batch size of the input sequence
-    :param hidden_size: hidden size of the RNN
-    :param hidden_layer_depth: number of layers in RNN
-    :param latent_length: latent vector length
-    :param output_size: 2, one representing the mean, other log std dev of the output
-    :param rnn_type: GRU/LSTM - use the same which you've used in the encoder
-    :param dtype: Depending on cuda enabled/disabled, create the tensor
-    '''
-
-    def __init__(self, sequence_length, batch_size, hidden_size, hidden_layer_depth, latent_length, output_size, dtype,
-                 rnn_type='LSTM'):
-
-        super(Decoder, self).__init__()
-
-        self.hidden_size = hidden_size
-        self.batch_size = batch_size
-        self.sequence_length = sequence_length
-        self.hidden_layer_depth = hidden_layer_depth
-        self.latent_length = latent_length
-        self.output_size = output_size
-        self.dtype = dtype
-
-        if rnn_type == 'LSTM':
-            self.model = nn.LSTM(input_size=1, \
-                                 hidden_size=self.hidden_size, \
-                                 num_layers=self.hidden_layer_depth, \
-                                 batch_first=True)
-        elif rnn_type == 'GRU':
-            self.model = nn.GRU(input_size=1, \
-                                hidden_size=self.hidden_size, \
-                                num_layers=self.hidden_layer_depth, \
-                                batch_first=True)
-        else:
-            raise NotImplementedError
-
-        self.latent_to_hidden = nn.Linear(self.latent_length, self.hidden_size)
-        self.hidden_to_output = nn.Linear(self.hidden_size, self.output_size)
-
-        ##xavier: 각각의 layer 특성에 맞춰서 초기화를 진행함
-        nn.init.xavier_uniform_(self.latent_to_hidden.weight)
-        nn.init.xavier_uniform_(self.hidden_to_output.weight)
-
-    def forward(self, latent, batch_size):
-        '''
-        Converts latent to hidden to output
-
-        :param latent: latent vector
-        :return: outputs consisting of mean and std dev of vector
-        '''
-        # self.hidden_size
-        h_state = self.latent_to_hidden(latent)
-
-        # initialize inputs for each batch
-        decoder_inputs = torch.zeros(batch_size, self.sequence_length, 1, requires_grad=True).type(self.dtype).cuda()
-        c_0 = torch.zeros(self.hidden_layer_depth, batch_size, self.hidden_size, requires_grad=True).type(
-            self.dtype).cuda()
-
-        # RUN RNN Decoder Model
-        if isinstance(self.model, nn.LSTM):
-            h_0 = torch.stack([h_state for _ in range(self.hidden_layer_depth)])
-            decoder_output, _ = self.model(decoder_inputs, (h_0, c_0))
-        elif isinstance(self.model, nn.GRU):
-            h_0 = torch.stack([h_state for _ in range(self.hidden_layer_depth)])
-            decoder_output, _ = self.model(decoder_inputs, h_0)
-        else:
-            raise NotImplementedError
-
-        out = self.hidden_to_output(decoder_output)
-        return out
-
-
-def _assert_no_grad(tensor):
-    assert not tensor.requires_grad, \
-        "nn criterions don't compute the gradient w.r.t. targets - please " \
-        "mark these tensors as not requiring gradients"
-
-
-class LSTM_VAE(BaseEstimator, nn.Module):
+class MODEL(BaseEstimator, nn.Module):
     '''
     Variational recurrent auto-encoder.
 
@@ -220,7 +38,7 @@ class LSTM_VAE(BaseEstimator, nn.Module):
     '''
 
     def __init__(self, params):
-        super(LSTM_VAE, self).__init__()  ###LSTM_VAE 로변경해야함 . reference 사용안 할라면
+        super(MODEL, self).__init__()  ###MODEL 로변경해야함 . reference 사용안 할라면
 
         # params
         # params
@@ -405,3 +223,186 @@ class LSTM_VAE(BaseEstimator, nn.Module):
         # np.save(os.path.join(folder_path, f'pred.npy'), pred)
 
         return scores, attack, pred
+
+
+
+class Encoder(nn.Module):
+    '''
+    Encoder network containing enrolled LSTM/GRU
+
+    :param number_of_features: number of input features
+    :param hidden_size: hidden size of the RNN
+    :param hidden_layer_depth: number of layers in RNN
+    :param latent_length: latent vector length
+    :param dropout: percentage of nodes to dropout
+    :param rnn_type: LSTM/GRU rnn_type
+    '''
+
+    def __init__(self, number_of_features, hidden_size, hidden_layer_depth, latent_length, dropout, rnn_type='LSTM'):
+
+        super(Encoder, self).__init__()
+
+        self.number_of_features = number_of_features
+        self.hidden_size = hidden_size
+        self.hidden_layer_depth = hidden_layer_depth
+        self.latent_length = latent_length
+        self.dropout = dropout
+
+        ## input = feature dimension
+        ## hidden size = 바꿔주고 싶은 hidden dimension
+        ## batch_first = input의 데이터 구조가 batch first로 바뀐다
+        ## RNN에 feed할 때, input의 차원은 [Seq_len, Batch_size, Hidden_size]인데
+        ## batch_first = True라면 ,  [Batch_size, Seq_len, Hidden_size]
+        ## hidden은 다음과 같이 정의 : [num_layers * num_directions, batch, hidden_size]
+        if rnn_type == 'LSTM':
+            self.model = nn.LSTM(input_size=self.number_of_features, \
+                                 hidden_size=self.hidden_size, \
+                                 num_layers=self.hidden_layer_depth, \
+                                 batch_first=True, \
+                                 dropout=self.dropout)
+        elif rnn_type == 'GRU':
+            self.model = nn.GRU(input_size=self.number_of_features, \
+                                hidden_size=self.hidden_size, \
+                                num_layers=self.hidden_layer_depth, \
+                                batch_first=True, \
+                                dropout=self.dropout)
+        else:
+            raise NotImplementedError
+
+    def forward(self, x, hidden):
+        '''
+        Forward propagation of encoder. Given input, outputs the last hidden state of encoder
+
+        :param x: input to the encoder, of shape (batch_size, seq_len, feature_size)
+        :return: last hidden state of encoder, of shape (batch_size, hidden_size)
+        '''
+
+        _, (h_end, c_end) = self.model(x, hidden)
+
+        h_end = h_end[-1, :, :]
+
+        return h_end
+
+
+class Lambda(nn.Module):
+    '''
+    Lambda module converts output of encoder to latent vector
+
+    :param hidden_size: hidden size of the encoder
+    :param latent_length: latent vector length
+    '''
+
+    def __init__(self, hidden_size, latent_length):
+        super(Lambda, self).__init__()
+
+        self.hidden_size = hidden_size
+        self.latent_length = latent_length
+
+        self.hidden_to_mean = nn.Linear(self.hidden_size, self.latent_length)
+        self.hidden_to_logvar = nn.Linear(self.hidden_size, self.latent_length)
+
+        ## 가중치 초기화
+        nn.init.xavier_uniform_(self.hidden_to_mean.weight)
+        nn.init.xavier_uniform_(self.hidden_to_logvar.weight)
+
+    def forward(self, x_encoded):
+        '''
+        Given last hidden state of encoder, passes through a linear layer, and finds the mean and variance
+
+        :param cell_output: last hidden state of encoder
+        :return: latent vector
+        '''
+
+        self.latent_mean = self.hidden_to_mean(x_encoded)
+        self.latent_logvar = self.hidden_to_logvar(x_encoded)
+
+        if self.training:
+            std = torch.exp(0.5 * self.latent_logvar)
+            eps = torch.randn_like(std)
+            return eps.mul(std).add_(self.latent_mean)
+        else:
+            return self.latent_mean
+
+
+class Decoder(nn.Module):
+    '''
+    Converts latent vector into output
+
+    :param sequence_length: length of the input sequence
+    :param batch_size: batch size of the input sequence
+    :param hidden_size: hidden size of the RNN
+    :param hidden_layer_depth: number of layers in RNN
+    :param latent_length: latent vector length
+    :param output_size: 2, one representing the mean, other log std dev of the output
+    :param rnn_type: GRU/LSTM - use the same which you've used in the encoder
+    :param dtype: Depending on cuda enabled/disabled, create the tensor
+    '''
+
+    def __init__(self, sequence_length, batch_size, hidden_size, hidden_layer_depth, latent_length, output_size, dtype,
+                 rnn_type='LSTM'):
+
+        super(Decoder, self).__init__()
+
+        self.hidden_size = hidden_size
+        self.batch_size = batch_size
+        self.sequence_length = sequence_length
+        self.hidden_layer_depth = hidden_layer_depth
+        self.latent_length = latent_length
+        self.output_size = output_size
+        self.dtype = dtype
+
+        if rnn_type == 'LSTM':
+            self.model = nn.LSTM(input_size=1, \
+                                 hidden_size=self.hidden_size, \
+                                 num_layers=self.hidden_layer_depth, \
+                                 batch_first=True)
+        elif rnn_type == 'GRU':
+            self.model = nn.GRU(input_size=1, \
+                                hidden_size=self.hidden_size, \
+                                num_layers=self.hidden_layer_depth, \
+                                batch_first=True)
+        else:
+            raise NotImplementedError
+
+        self.latent_to_hidden = nn.Linear(self.latent_length, self.hidden_size)
+        self.hidden_to_output = nn.Linear(self.hidden_size, self.output_size)
+
+        ##xavier: 각각의 layer 특성에 맞춰서 초기화를 진행함
+        nn.init.xavier_uniform_(self.latent_to_hidden.weight)
+        nn.init.xavier_uniform_(self.hidden_to_output.weight)
+
+    def forward(self, latent, batch_size):
+        '''
+        Converts latent to hidden to output
+
+        :param latent: latent vector
+        :return: outputs consisting of mean and std dev of vector
+        '''
+        # self.hidden_size
+        h_state = self.latent_to_hidden(latent)
+
+        # initialize inputs for each batch
+        decoder_inputs = torch.zeros(batch_size, self.sequence_length, 1, requires_grad=True).type(self.dtype).cuda()
+        c_0 = torch.zeros(self.hidden_layer_depth, batch_size, self.hidden_size, requires_grad=True).type(
+            self.dtype).cuda()
+
+        # RUN RNN Decoder Model
+        if isinstance(self.model, nn.LSTM):
+            h_0 = torch.stack([h_state for _ in range(self.hidden_layer_depth)])
+            decoder_output, _ = self.model(decoder_inputs, (h_0, c_0))
+        elif isinstance(self.model, nn.GRU):
+            h_0 = torch.stack([h_state for _ in range(self.hidden_layer_depth)])
+            decoder_output, _ = self.model(decoder_inputs, h_0)
+        else:
+            raise NotImplementedError
+
+        out = self.hidden_to_output(decoder_output)
+        return out
+
+
+def _assert_no_grad(tensor):
+    assert not tensor.requires_grad, \
+        "nn criterions don't compute the gradient w.r.t. targets - please " \
+        "mark these tensors as not requiring gradients"
+
+

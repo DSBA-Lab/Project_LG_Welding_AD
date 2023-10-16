@@ -8,75 +8,6 @@ import sys
 import pandas as pd
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-class LSTMGenerator(nn.Module):
-    """
-    LSTM based generator. 
-    """
-
-    def __init__(self, nb_features, device = None):
-        """
-        Arguments
-        ---------
-
-        nb_features: the number of features
-        """
-        super().__init__()
-        self.device = device
-        self.nb_features = nb_features
-        self.hidden_size = 100 # MAD-GAN uses 100 hidden size
-        self.lstm_depth = 3 # MAD-GAN uses 3 layers in LSTM
-
-        self.lstm = nn.LSTM(input_size  = self.nb_features, 
-                            hidden_size = self.hidden_size, 
-                            num_layers  = self.lstm_depth, 
-                            batch_first = True).to(self.device)
-        
-        self.linear = nn.Sequential(
-            nn.Linear(in_features  = self.hidden_size, 
-                      out_features = self.nb_features), 
-            nn.Tanh()
-        ).to(self.device)
-
-    def forward(self, data):
-        batch_size, seq_len, _ = data.size()
-        
-        outputs, _ = self.lstm(data)
-        
-        outputs = self.linear(outputs.contiguous().view(batch_size*seq_len, self.hidden_size))
-        outputs = outputs.view(batch_size, seq_len, -1)
-        return outputs
-
-
-class LSTMDiscriminator(nn.Module):
-    """
-    LSTM based discriminator
-    """
-
-    def __init__(self, nb_features, device=None):
-        super().__init__()
-        self.nb_features = nb_features
-        self.device = device
-        self.hidden_size = 100 # MAD-GAN uses 100 hidden size
-        
-        self.lstm = nn.LSTM(input_size  = self.nb_features, 
-                            hidden_size = self.hidden_size, 
-                            num_layers  = 1, 
-                            batch_first = True).to(self.device)
-
-        self.linear = nn.Sequential(
-            nn.Linear(in_features  = self.hidden_size, 
-                      out_features = 1), 
-            nn.Sigmoid()
-        ).to(self.device)
-
-    def forward(self, data):
-        batch_size, seq_len, _ = data.size()
-
-        recurrent_features, _ = self.lstm(data)
-        outputs = self.linear(recurrent_features.contiguous().view(batch_size*seq_len, self.hidden_size))
-        outputs = outputs.view(batch_size, seq_len, -1)
-        return outputs
-
 class MadGAN:
     '''
     MadGAN class
@@ -514,3 +445,72 @@ class MadGAN:
             self.gen_criterion.reduction = 'none'
 
             return optimal_z
+        
+class LSTMGenerator(nn.Module):
+    """
+    LSTM based generator. 
+    """
+
+    def __init__(self, nb_features, device = None):
+        """
+        Arguments
+        ---------
+
+        nb_features: the number of features
+        """
+        super().__init__()
+        self.device = device
+        self.nb_features = nb_features
+        self.hidden_size = 100 # MAD-GAN uses 100 hidden size
+        self.lstm_depth = 3 # MAD-GAN uses 3 layers in LSTM
+
+        self.lstm = nn.LSTM(input_size  = self.nb_features, 
+                            hidden_size = self.hidden_size, 
+                            num_layers  = self.lstm_depth, 
+                            batch_first = True).to(self.device)
+        
+        self.linear = nn.Sequential(
+            nn.Linear(in_features  = self.hidden_size, 
+                      out_features = self.nb_features), 
+            nn.Tanh()
+        ).to(self.device)
+
+    def forward(self, data):
+        batch_size, seq_len, _ = data.size()
+        
+        outputs, _ = self.lstm(data)
+        
+        outputs = self.linear(outputs.contiguous().view(batch_size*seq_len, self.hidden_size))
+        outputs = outputs.view(batch_size, seq_len, -1)
+        return outputs
+
+
+class LSTMDiscriminator(nn.Module):
+    """
+    LSTM based discriminator
+    """
+
+    def __init__(self, nb_features, device=None):
+        super().__init__()
+        self.nb_features = nb_features
+        self.device = device
+        self.hidden_size = 100 # MAD-GAN uses 100 hidden size
+        
+        self.lstm = nn.LSTM(input_size  = self.nb_features, 
+                            hidden_size = self.hidden_size, 
+                            num_layers  = 1, 
+                            batch_first = True).to(self.device)
+
+        self.linear = nn.Sequential(
+            nn.Linear(in_features  = self.hidden_size, 
+                      out_features = 1), 
+            nn.Sigmoid()
+        ).to(self.device)
+
+    def forward(self, data):
+        batch_size, seq_len, _ = data.size()
+
+        recurrent_features, _ = self.lstm(data)
+        outputs = self.linear(recurrent_features.contiguous().view(batch_size*seq_len, self.hidden_size))
+        outputs = outputs.view(batch_size, seq_len, -1)
+        return outputs
