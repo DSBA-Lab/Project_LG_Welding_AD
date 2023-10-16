@@ -14,7 +14,6 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='LBAD')
 
     # basic config
-    parser.add_argument('--configure', type=str, default='config.yaml', help='configure file load')
     parser.add_argument('--seed', type=int, default=72, help="set randomness")
     parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
     parser.add_argument('--model', type=str, required=True,
@@ -22,8 +21,14 @@ if __name__=='__main__':
 
     # data loader
     parser.add_argument('--data_polarity', type=str, required=True, choices=['Anode', 'Cathode'])
+    parser.add_argument('--model_type', type=str, required=True, choices=['reconstruction'])
 
-    # anomaly detection task
+    # model define 수정 필요
+    parser.add_argument('--seq_len', type=int, default=100, help='input sequence length')
+    parser.add_argument('--rnn_type', type=str, default='LSTM', choices=['LSTM', 'GRU'])
+    parser.add_argument('--hidden_size', type=int, default=64, help='hidden size')
+    parser.add_argument('--num_layers', type=int, default=3, help='number of layers')
+    parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
@@ -53,14 +58,11 @@ if __name__=='__main__':
 
     set_seed(args.seed)
 
-    # yaml file load
-    with open(args.configure) as f:
-        config = OmegaConf.load(f)
-
     Exp = ExpDeepLearning
 
     if args.is_training:
         # setting record of experiments
+        setting = 'test'
         # setting = '{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
         #     args.model,
         #     args.features,
