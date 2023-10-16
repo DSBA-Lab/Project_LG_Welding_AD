@@ -139,7 +139,7 @@ class MODEL(BaseEstimator, nn.Module):
         criterion = self._select_criterion()
         all_loss = []
 
-        max_index = []
+        # max_index = []
         for epoch in tqdm(range(train_epochs), desc='Epochs', position=0, leave=True):
             iter_count = 0
             train_loss = []
@@ -177,13 +177,13 @@ class MODEL(BaseEstimator, nn.Module):
         # plt.plot(all_loss, label='train_loss')
         # plt.legend()
         # give max x index
-        max_index.append(all_loss.index(max(all_loss)))
+        # max_index.append(all_loss.index(max(all_loss)))
         plt.show()
 
-        print(f"Epoch: {epoch + 1}, Steps: {train_steps} cost time: {time.time() - epoch_time} | "
-              f"Train Loss: {train_loss:.7f} ")  # Vali Loss: {valid_loss:.7f}
+        # print(f"Epoch: {epoch + 1}, Steps: {train_steps} cost time: {time.time() - epoch_time} | "
+        #       f"Train Loss: {train_loss:.7f} ")  # Vali Loss: {valid_loss:.7f}
 
-        return max_index
+        return # max_index
 
     def test(self, test_loader):
 

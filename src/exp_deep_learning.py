@@ -130,7 +130,7 @@ def main():
 
     #train model & test model
     if args.model == 'LSTM_VAE':
-      max_index=model.fit(train_loader = trn_dataloader, train_epochs=args.epochs)
+      model.fit(train_loader = trn_dataloader, train_epochs=args.epochs)
       scores, attack, _ = model.test(test_loader = tst_dataloader)
       # split scores by window_size
       windowed_scores = scores.reshape(-1, window_size)
@@ -138,28 +138,17 @@ def main():
 
     elif args.model == 'USAD':
       # USAD의 경우 value와 window가 대응이 되어야 하기 때문에 slide size = 1
-      history = UsadModel.training(args.epochs, model, trn_dataloader, w_size)
-    #   PATH = '../models/'
-    #   # torch.save(model, PATH + 'model.pt')  # 전체 모델 저장
-    #   torch.save(model.state_dict(), PATH + f'{data_polarity}_model_state_dict_{window_size}_{slide_size}.pt')
-      # load하는 경우
-      # PATH = '../models/'
-      # model = UsadModel(w_size, z_size)
-      # model = UsadModel.to_device(model,device)
-      # model.load_state_dict(torch.load(PATH + f'{data_polarity}_model_state_dict_{window_size}_{slide_size}.pt'))  # state_dict를 불러 온 후, 모델에 저장
+      model.fit(train_loader = trn_dataloader, train_epochs=args.epochs)
+      scores=model.test(test_loader = tst_dataloader)
 
-      results=UsadModel.testing(model, tst_dataloader, w_size)
+
       windows_labels=[]
       for i in range(0, len(tst_label), slide_size):
           windows_labels.append(list(np.int_(tst_label[i:i+window_size])))
 
       y_test = [1.0 if (np.sum(window) > 0) else 0 for window in windows_labels]
       y_test_trimmed = y_test[:-4]
-      y_pred=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
-                                    results[-1].flatten().detach().cpu().numpy()])
       y_test_trimmed = np.array(y_test_trimmed)
-
-      scores = y_pred
       attack = y_test_trimmed
 
       # split scores by window_size

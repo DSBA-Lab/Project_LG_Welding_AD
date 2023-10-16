@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torch import optim
+import numpy as np
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -7,6 +9,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 class MODEL(nn.Module):
   def __init__(self, w_size, z_size):
     super().__init__()
+    self.w_size = w_size
     self.encoder = Encoder(w_size, z_size)
     self.decoder1 = Decoder(z_size, w_size)
     self.decoder2 = Decoder(z_size, w_size)
@@ -17,81 +20,79 @@ class MODEL(nn.Module):
         return [to_device(x, device) for x in data]
     return data.to(device, non_blocking=True)
   
-  def evaluate(model, val_loader, n, w_size):
-    # outputs = [model.validation_step(torch.tensor(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device)), n) for batch in val_loader]
-    outputs = [model.validation_step(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device), n) for batch in val_loader]
-    return model.validation_epoch_end(outputs)
-  
-  def training(epochs, model, train_loader, val_loader,w_size,opt_func=torch.optim.Adam):
-    history = []
-    optimizer1 = opt_func(list(model.encoder.parameters())+list(model.decoder1.parameters()))
-    optimizer2 = opt_func(list(model.encoder.parameters())+list(model.decoder2.parameters()))
-    for epoch in range(epochs):
+  # def evaluate(model, val_loader, n, w_size):
+  #   # outputs = [model.validation_step(torch.tensor(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device)), n) for batch in val_loader]
+  #   outputs = [model.validation_step(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device), n) for batch in val_loader]
+  #   return model.validation_epoch_end(outputs)
+
+  def _select_optimizer(self):
+      if self.optim == 'adamw':
+          model_optim = optim.AdamW
+      elif self.optim == 'adam':
+          model_optim = optim.Adam
+      elif self.optim == 'sgd':
+          model_optim = optim.SGD
+      return model_optim
+
+  def fit(self, train_loader, train_epochs):
+   
+    # history = []
+    model_optim = self._select_optimizer()
+    optimizer1 = model_optim(list(self.encoder.parameters())+list(self.decoder1.parameters()))
+    optimizer2 = model_optim(list(self.encoder.parameters())+list(self.decoder2.parameters()))
+    for epoch in range(train_epochs):
         for batch in train_loader:
           
-          batch_reshape = batch['given'].view([batch['given'].shape[0],w_size]) # (bsz, w_size)
-
+          batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size]) # (bsz, w_size)
           batch=to_device(batch_reshape,device)
-          
           # batch = torch.tensor(batch)
             
           #Train AE1
-          loss1,loss2 = model.training_step(batch,epoch+1)
+          # loss1,loss2 = self.training_step(batch,epoch+1)
+          z = self.encoder(batch)
+          w1 = self.decoder1(z)
+          # w2 = self.decoder2(z)
+          w3 = self.decoder2(self.encoder(w1))
+          loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+          # loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
           loss1.backward()
           optimizer1.step()
           optimizer1.zero_grad()
             
-            
           #Train AE2
-          loss1,loss2 = model.training_step(batch,epoch+1)
+          # loss1,loss2 = self.training_step(batch,epoch+1)
+          z = self.encoder(batch)
+          w1 = self.decoder1(z)
+          w2 = self.decoder2(z)
+          w3 = self.decoder2(self.encoder(w1))
+          # loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+          loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
           loss2.backward()
           optimizer2.step()
           optimizer2.zero_grad()
             
-        result = evaluate(model, val_loader, epoch+1, w_size)
-        model.epoch_end(epoch, result)
-        history.append(result)
-    return history
+        # result = evaluate(self, val_loader, epoch+1, w_size)
+        # self.epoch_end(epoch, result)
+        # history.append(result)
+
+    return # history
   
   
-  def testing(model, test_loader,w_size, alpha=.5, beta=.5):
+  def test(self, test_loader, alpha=.5, beta=.5):
     results=[]
     for batch in test_loader:
-      batch_reshape = batch['given'].view([batch['given'].shape[0],w_size])
+      batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size])
       batch=to_device(batch_reshape,device)
       # batch = torch.tensor(batch)
-      w1=model.decoder1(model.encoder(batch))
-      w2=model.decoder2(model.encoder(w1))
+      w1=self.decoder1(self.encoder(batch))
+      w2=self.decoder2(self.encoder(w1))
       results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
-    return results
+      y_pred=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
+                                    results[-1].flatten().detach().cpu().numpy()])
+    return y_pred
   
-  def training_step(self, batch, n):
-    z = self.encoder(batch)
-    w1 = self.decoder1(z)
-    w2 = self.decoder2(z)
-    w3 = self.decoder2(self.encoder(w1))
-    loss1 = 1/n*torch.mean((batch-w1)**2)+(1-1/n)*torch.mean((batch-w3)**2)
-    loss2 = 1/n*torch.mean((batch-w2)**2)-(1-1/n)*torch.mean((batch-w3)**2)
-    return loss1,loss2
-
-  def validation_step(self, batch, n):
-    z = self.encoder(batch)
-    w1 = self.decoder1(z)
-    w2 = self.decoder2(z)
-    w3 = self.decoder2(self.encoder(w1))
-    loss1 = 1/n*torch.mean((batch-w1)**2)+(1-1/n)*torch.mean((batch-w3)**2)
-    loss2 = 1/n*torch.mean((batch-w2)**2)-(1-1/n)*torch.mean((batch-w3)**2)
-    return {'val_loss1': loss1, 'val_loss2': loss2}
-        
-  def validation_epoch_end(self, outputs):
-    batch_losses1 = [x['val_loss1'] for x in outputs]
-    epoch_loss1 = torch.stack(batch_losses1).mean()
-    batch_losses2 = [x['val_loss2'] for x in outputs]
-    epoch_loss2 = torch.stack(batch_losses2).mean()
-    return {'val_loss1': epoch_loss1.item(), 'val_loss2': epoch_loss2.item()}
-    
-  def epoch_end(self, epoch, result):
-    print("Epoch [{}], val_loss1: {:.4f}, val_loss2: {:.4f}".format(epoch, result['val_loss1'], result['val_loss2']))
+  # def epoch_end(self, epoch, result):
+  #   print("Epoch [{}], val_loss1: {:.4f}, val_loss2: {:.4f}".format(epoch, result['val_loss1'], result['val_loss2']))
     
 
 def to_device(data, device):
