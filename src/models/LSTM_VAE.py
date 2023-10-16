@@ -355,9 +355,9 @@ class LSTM_VAE(BaseEstimator, nn.Module):
             train_loss = np.average(train_loss)
             # if epoch % 10 == 0:
             # plot all_loss: train_loss list
-        plt.figure(figsize=(10, 5))
-        plt.plot(all_loss, label='train_loss')
-        plt.legend()
+        # plt.figure(figsize=(10, 5))
+        # plt.plot(all_loss, label='train_loss')
+        # plt.legend()
         # give max x index
         max_index.append(all_loss.index(max(all_loss)))
         plt.show()
