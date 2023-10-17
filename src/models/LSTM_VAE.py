@@ -167,7 +167,7 @@ class Model(BaseEstimator, nn.Module):
                 if (batch_idx + 1) % 100 == 0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(batch_idx + 1, epoch + 1, loss.item()))
                     speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch_idx)
+                    left_time = speed * ((train_epochs - epoch) * train_steps - batch_idx)
                     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()

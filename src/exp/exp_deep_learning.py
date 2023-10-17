@@ -150,7 +150,7 @@ class ExpDeepLearning(Exp_Basic):
 
         scores, attack, _ = self.model.test(test_loader, self.criterion)
         pdb.set_trace()
-        
+
         self.anomaly_criterion = nn.MSELoss(reduce=False)
 
         # (1) stastic on the train set
