@@ -138,38 +138,38 @@ class ExpDeepLearning(Exp_Basic):
 
         pdb.set_trace()
 
-        threshold = np.percentile(combined_energy, 100 - self.args.anomaly_ratio)
-        print("Threshold :", threshold)
-
-        # (3) evaluation on the test set
-        pred = (test_energy > threshold).astype(int)
-        test_labels = np.concatenate(test_labels, axis=0).reshape(-1)
-        test_labels = np.array(test_labels)
-        gt = test_labels.astype(int)
-
-        print("pred:   ", pred.shape)
-        print("gt:     ", gt.shape)
-
-        # (4) detection adjustment
-        gt, pred = adjustment(gt, pred)
-
-        pred = np.array(pred)
-        gt = np.array(gt)
-        print("pred: ", pred.shape)
-        print("gt:   ", gt.shape)
-
-        accuracy = accuracy_score(gt, pred)
-        precision, recall, f_score, support = precision_recall_fscore_support(gt, pred, average='binary')
-        print("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
-            accuracy, precision,
-            recall, f_score))
-
-        f = open("result_anomaly_detection.txt", 'a')
-        f.write(setting + "  \n")
-        f.write("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
-            accuracy, precision,
-            recall, f_score))
-        f.write('\n')
-        f.write('\n')
-        f.close()
+        # threshold = np.percentile(combined_energy, 100 - self.args.anomaly_ratio)
+        # print("Threshold :", threshold)
+        #
+        # # (3) evaluation on the test set
+        # pred = (test_energy > threshold).astype(int)
+        # test_labels = np.concatenate(test_labels, axis=0).reshape(-1)
+        # test_labels = np.array(test_labels)
+        # gt = test_labels.astype(int)
+        #
+        # print("pred:   ", pred.shape)
+        # print("gt:     ", gt.shape)
+        #
+        # # (4) detection adjustment
+        # gt, pred = adjustment(gt, pred)
+        #
+        # pred = np.array(pred)
+        # gt = np.array(gt)
+        # print("pred: ", pred.shape)
+        # print("gt:   ", gt.shape)
+        #
+        # accuracy = accuracy_score(gt, pred)
+        # precision, recall, f_score, support = precision_recall_fscore_support(gt, pred, average='binary')
+        # print("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+        #     accuracy, precision,
+        #     recall, f_score))
+        #
+        # f = open("result_anomaly_detection.txt", 'a')
+        # f.write(setting + "  \n")
+        # f.write("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+        #     accuracy, precision,
+        #     recall, f_score))
+        # f.write('\n')
+        # f.write('\n')
+        # f.close()
         return
