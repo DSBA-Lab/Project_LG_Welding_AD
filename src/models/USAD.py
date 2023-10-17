@@ -9,25 +9,18 @@ class Model(nn.Module):
   def __init__(self, configs):
     super().__init__()
     # 기존에 4 # window size * feature 수
-    self.w_size = configs.seq_len * configs.feature_num 
-    self.z_size = configs.seq_len * configs.hidden_size
+    self.seq_len = configs.seq_len
+    self.feature_num = configs.feature_num
+    self.hidden_size = configs.hidden_size
+    self.w_size = self.seq_len * self.feature_num 
+    self.z_size = self.seq_len * self.hidden_size
     self.encoder = Encoder(self.w_size, self.z_size)
     self.decoder1 = Decoder(self.z_size, self.w_size)
     self.decoder2 = Decoder(self.z_size, self.w_size)
     self.lr = configs.learning_rate
- 
-  def _select_optimizer(self):
-    if self.optim == 'adamw':
-        model_optim = optim.AdamW
-    elif self.optim == 'adam':
-        model_optim = optim.Adam
-    elif self.optim == 'sgd':
-        model_optim = optim.SGD
-    return model_optim
+
 
   def fit(self, train_loader, train_epochs, model_optim, criterion, device, ckpt_path, early_stopping):
-    '''criterion 사용되지 않음'''
-    # model_optim = self._select_optimizer() # 형님 추후 input하는 형태에 따라 수정 예정
     time_now = time.time()
     train_steps = len(train_loader)
     optimizer1 = model_optim(list(self.encoder.parameters())+list(self.decoder1.parameters()), lr=self.lr)
@@ -87,42 +80,41 @@ class Model(nn.Module):
     best_model_path = ckpt_path + '/' + 'checkpoint.pth'
     self.load_state_dict(torch.load(best_model_path))
 
-    return # history
+    return 
   
   
   def test(self, test_loader, criterion, device, alpha=.5, beta=.5):
     dist = []
     attack = []
-    pred=[] #output 형태 통일용
+    pred=[]
     self.eval()
     with torch.no_grad():
       for batch_idx, batch in tqdm(enumerate(test_loader), desc='Batches', position=0, leave=True,
                                           total=len(test_loader)):
-                                          
+                           
         batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size])
-        batch=to_device(batch_reshape,device)
-        # batch = torch.tensor(batch)
-        w1=self.decoder1(self.encoder(batch)).view(batch['given'].shape[0], batch['given'].shape[1],-1)
-        w2=self.decoder2(self.encoder(w1)).view(batch['given'].shape[0], batch['given'].shape[1],-1)
+        batch_x=to_device(batch_reshape,device)
+        w1=self.decoder1(self.encoder(batch_x))
+        w2=self.decoder2(self.encoder(w1))
+
+        # 다시 input된 timestamp 단위의 형태로 변환
+        w1=w1.view(batch_x.shape[0], self.seq_len, self.feature_num)
+        w2=w2.view(batch_x.shape[0], self.seq_len, self.feature_num)
+        batch_x=batch_x.view(batch_x.shape[0], self.seq_len, self.feature_num)
         # pred.append([w1.cpu().detach().numpy(), w2.cpu().detach().numpy()])
-        score = alpha * criterion(w1, batch) + beta * criterion(w2, batch)
+
+        # criterion(MSE)에 차원을 유지하는 option을 가해 각 timestamp별로 score를 구함
+        score = alpha * criterion(w1, batch_x) + beta * criterion(w2, batch_x)
         dist.append(np.mean(score.detach().cpu().numpy(), axis=2))
 
-        # results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
-        # window_score=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
-        #                               results[-1].flatten().detach().cpu().numpy()])
         attack.append(batch['attack'].squeeze().numpy())
     dist = np.concatenate(dist).flatten()
     attack = np.concatenate(attack).flatten()
     # pred = np.concatenate(pred)
-
     scores = dist.copy()
 
     return scores, attack, pred 
   
-  # def epoch_end(self, epoch, result):
-  #   print("Epoch [{}], val_loss1: {:.4f}, val_loss2: {:.4f}".format(epoch, result['val_loss1'], result['val_loss2']))
-    
 
 def to_device(data, device):
     """Move tensor(s) to chosen device"""
