@@ -8,8 +8,9 @@ import time
 class Model(nn.Module):
   def __init__(self, configs):
     super().__init__()
-    self.z_size = configs.window_size * configs.hidden_size# 기존에 4 # window size * feature 수
-    self.w_size = configs.window_size * configs.feature_num 
+    # 기존에 4 # window size * feature 수
+    self.w_size = configs.seq_len * configs.feature_num 
+    self.z_size = configs.seq_len * configs.hidden_size
     self.encoder = Encoder(self.w_size, self.z_size)
     self.decoder1 = Decoder(self.z_size, self.w_size)
     self.decoder2 = Decoder(self.z_size, self.w_size)
@@ -89,22 +90,34 @@ class Model(nn.Module):
   
   
   def test(self, test_loader, criterion, device, alpha=.5, beta=.5):
-    results=[]
-
+    dist = []
+    attack = []
+    pred=[] #output 형태 통일용
     self.eval()
-    for batch_idx, batch in tqdm(enumerate(test_loader), desc='Batches', position=0, leave=True,
-                                         total=len(test_loader)):
-      
-      batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size])
-      batch=to_device(batch_reshape,device)
-      # batch = torch.tensor(batch)
-      w1=self.decoder1(self.encoder(batch))
-      w2=self.decoder2(self.encoder(w1))
-      results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
-      y_pred=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
-                                    results[-1].flatten().detach().cpu().numpy()])
-      
-    return y_pred
+    with torch.no_grad():
+      for batch_idx, batch in tqdm(enumerate(test_loader), desc='Batches', position=0, leave=True,
+                                          total=len(test_loader)):
+                                          
+        batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size])
+        batch=to_device(batch_reshape,device)
+        # batch = torch.tensor(batch)
+        w1=self.decoder1(self.encoder(batch)).view(batch['given'].shape[0], batch['given'].shape[1],-1)
+        w2=self.decoder2(self.encoder(w1)).view(batch['given'].shape[0], batch['given'].shape[1],-1)
+        # pred.append([w1.cpu().detach().numpy(), w2.cpu().detach().numpy()])
+        score = alpha * criterion(w1, batch) + beta * criterion(w2, batch)
+        dist.append(np.mean(score.detach().cpu().numpy(), axis=2))
+
+        # results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
+        # window_score=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
+        #                               results[-1].flatten().detach().cpu().numpy()])
+        attack.append(batch['attack'].squeeze().numpy())
+    dist = np.concatenate(dist).flatten()
+    attack = np.concatenate(attack).flatten()
+    # pred = np.concatenate(pred)
+
+    scores = dist.copy()
+
+    return scores, attack, pred 
   
   # def epoch_end(self, epoch, result):
   #   print("Epoch [{}], val_loss1: {:.4f}, val_loss2: {:.4f}".format(epoch, result['val_loss1'], result['val_loss2']))

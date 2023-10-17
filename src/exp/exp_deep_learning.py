@@ -97,16 +97,18 @@ class ExpDeepLearning(Exp_Basic):
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
+        if self.args.model != 'USAD':
+            scores, attack, _ = self.model.test(test_loader, self.criterion)
 
-        scores, attack, _ = self.model.test(test_loader, self.criterion)
-
-        windows_scores = np.array([])
-        if task == 'window_mean':
-            for i in range(0, len(scores), window_size):
-                windows_mean_scores = np.append(windows_scores, np.mean(scores[i:i + window_size]))
-        elif task == 'window_max':
-            for i in range(0, len(scores), window_size):
-                windows_max_scores = np.append(windows_max_scores, np.max(scores[i:i + window_size]))
+            windows_scores = np.array([])
+            if task == 'window_mean':
+                for i in range(0, len(scores), window_size):
+                    windows_mean_scores = np.append(windows_scores, np.mean(scores[i:i + window_size]))
+            elif task == 'window_max':
+                for i in range(0, len(scores), window_size):
+                    windows_max_scores = np.append(windows_max_scores, np.max(scores[i:i + window_size]))
+        else:
+            score, attack, window_score = self.model.test(test_loader, self.criterion)
 
         windows_labels = np.array([], dtype=float)  # 0, 1: max in window
         for i in range(0, len(attack), window_size):
