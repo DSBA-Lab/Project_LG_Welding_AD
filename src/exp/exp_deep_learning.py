@@ -1,3 +1,5 @@
+import pdb
+
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, adjustment
@@ -36,7 +38,7 @@ class ExpDeepLearning(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
-        criterion = nn.MSELoss()
+        criterion = nn.MSELoss(reduction='none')
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -75,6 +77,16 @@ class ExpDeepLearning(Exp_Basic):
 
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
+
+        self.model.fit(train_loader,
+                       self.args.train_epochs,
+                       model_optim,
+                       criterion,
+                       self.device,
+                       path,
+                       early_stopping)
+
+        pdb.set_trace()
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
@@ -136,7 +148,9 @@ class ExpDeepLearning(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        self.model.eval()
+        scores, attack, _ = self.model.test(test_loader, self.criterion)
+        pdb.set_trace()
+        
         self.anomaly_criterion = nn.MSELoss(reduce=False)
 
         # (1) stastic on the train set

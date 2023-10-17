@@ -128,15 +128,15 @@ class Model(BaseEstimator, nn.Module):
         # x_decoded = x_decoded.permute(1,0,2)
         return [x_decoded, kl_loss]
 
-    def fit(self, train_loader, train_epochs):  # valid_loader, test_loader
+    def fit(self, train_loader, train_epochs, model_optim, criterion, device, ckpt_path, early_stopping):  # valid_loader, test_loader
 
         time_now = time.time()
 
         best_metrics = None
 
         train_steps = len(train_loader)
-        model_optim = self._select_optimizer()
-        criterion = self._select_criterion()
+        # model_optim = self._select_optimizer()
+        # criterion = self._select_criterion()
         all_loss = []
 
         # max_index = []
@@ -151,8 +151,8 @@ class Model(BaseEstimator, nn.Module):
             for batch_idx, batch in tqdm(enumerate(train_loader), desc='Batches', position=0, leave=False,
                                          total=len(train_loader)):
                 iter_count += 1
-                batch_x = batch['given'].float().to(self.device)
-                batch_y = batch['answer'].float().to(self.device)
+                batch_x = batch['given'].float().to(device)
+                batch_y = batch['answer'].float().to(device)
 
                 model_optim.zero_grad()
                 output = self.forward(batch_x)
@@ -163,34 +163,58 @@ class Model(BaseEstimator, nn.Module):
                 loss = torch.mean(loss)
                 train_loss.append(loss.item())
                 all_loss.append(loss.item())
+
+                if (batch_idx + 1) % 100 == 0:
+                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(batch_idx + 1, epoch + 1, loss.item()))
+                    speed = (time.time() - time_now) / iter_count
+                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - batch_idx)
+                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                    iter_count = 0
+                    time_now = time.time()
+
                 loss.backward()
                 model_optim.step()
-
-                speed = (time.time() - time_now) / iter_count
-                left_time = speed * ((train_epochs - epoch) * train_steps - batch_idx)
 
             train_score = np.concatenate(train_score).flatten()
             train_loss = np.average(train_loss)
             # if epoch % 10 == 0:
             # plot all_loss: train_loss list
+
+            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
+            train_loss = np.average(train_loss)
+            # vali_loss = self.vali(vali_data, vali_loader, criterion)
+            # test_loss = self.vali(test_data, test_loader, criterion)
+
+            # print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
+            #     epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(epoch + 1, train_steps, train_loss))
+            early_stopping(train_loss, self.model, ckpt_path)
+            if early_stopping.early_stop:
+                print("Early stopping")
+                break
+
+        best_model_path = ckpt_path + '/' + 'checkpoint.pth'
+        self.model.load_state_dict(torch.load(best_model_path))
+
+
         # plt.figure(figsize=(10, 5))
         # plt.plot(all_loss, label='train_loss')
         # plt.legend()
         # give max x index
         # max_index.append(all_loss.index(max(all_loss)))
-        plt.show()
+        # plt.show()
 
         # print(f"Epoch: {epoch + 1}, Steps: {train_steps} cost time: {time.time() - epoch_time} | "
         #       f"Train Loss: {train_loss:.7f} ")  # Vali Loss: {valid_loss:.7f}
 
         return # max_index
 
-    def test(self, test_loader):
+    def test(self, test_loader, criterion):
 
         dist = []
         attack = []
         pred = []
-        criterion = self._select_criterion()
+        # criterion = self._select_criterion()
 
         self.eval()
         with torch.no_grad():
