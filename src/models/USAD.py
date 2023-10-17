@@ -6,20 +6,15 @@ import numpy as np
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 
-class MODEL(nn.Module):
-  def __init__(self, w_size, z_size):
+class Model(nn.Module):
+  def __init__(self, configs):
     super().__init__()
-    self.w_size = w_size
-    self.encoder = Encoder(w_size, z_size)
-    self.decoder1 = Decoder(z_size, w_size)
-    self.decoder2 = Decoder(z_size, w_size)
-  
-  def to_device(data, device):
-    """Move tensor(s) to chosen device"""
-    if isinstance(data, (list,tuple)):
-        return [to_device(x, device) for x in data]
-    return data.to(device, non_blocking=True)
-  
+    self.z_size = configs.window_size * configs.hidden_size# 기존에 4 # window size * feature 수
+    self.w_size = configs.window_size * configs.feature_num 
+    self.encoder = Encoder(self.w_size, self.z_size)
+    self.decoder1 = Decoder(self.z_size, self.w_size)
+    self.decoder2 = Decoder(self.z_size, self.w_size)
+ 
   # def evaluate(model, val_loader, n, w_size):
   #   # outputs = [model.validation_step(torch.tensor(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device)), n) for batch in val_loader]
   #   outputs = [model.validation_step(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device), n) for batch in val_loader]
@@ -44,7 +39,7 @@ class MODEL(nn.Module):
         for batch in train_loader:
           
           batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size]) # (bsz, w_size)
-          batch=to_device(batch_reshape,device)
+          batch=to_device(batch_reshape, device)
           # batch = torch.tensor(batch)
             
           #Train AE1

@@ -118,10 +118,7 @@ def main():
         model = LSTM_VAE(model_params).to(device)
     elif args.model == 'USAD':
         # w_size = window_size*len(Cathode_Train_X_scaled[0]) # window size * feature 수
-        w_size = window_size * model_params['feature_num'] # 기존에 4 # window size * feature 수
-        z_size = window_size * model_params['hidden_size']
-        model = UsadModel(w_size, z_size)
-        model = UsadModel.to_device(model,device)
+        model = UsadModel(model_params).to(device)
     elif args.model == 'MADGAN':
         #모델 선언을 아래의 학습과정에서 동시에 수행
         pass
