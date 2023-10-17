@@ -2,9 +2,8 @@ import torch
 import torch.nn as nn
 from torch import optim
 import numpy as np
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
+from tqdm import tqdm
+import time
 
 class Model(nn.Module):
   def __init__(self, configs):
@@ -15,67 +14,87 @@ class Model(nn.Module):
     self.decoder1 = Decoder(self.z_size, self.w_size)
     self.decoder2 = Decoder(self.z_size, self.w_size)
  
-  # def evaluate(model, val_loader, n, w_size):
-  #   # outputs = [model.validation_step(torch.tensor(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device)), n) for batch in val_loader]
-  #   outputs = [model.validation_step(to_device(batch['given'].view([batch['given'].shape[0],w_size]),device), n) for batch in val_loader]
-  #   return model.validation_epoch_end(outputs)
-
   def _select_optimizer(self):
-      if self.optim == 'adamw':
-          model_optim = optim.AdamW
-      elif self.optim == 'adam':
-          model_optim = optim.Adam
-      elif self.optim == 'sgd':
-          model_optim = optim.SGD
-      return model_optim
+    if self.optim == 'adamw':
+        model_optim = optim.AdamW
+    elif self.optim == 'adam':
+        model_optim = optim.Adam
+    elif self.optim == 'sgd':
+        model_optim = optim.SGD
+    return model_optim
 
-  def fit(self, train_loader, train_epochs):
-   
-    # history = []
-    model_optim = self._select_optimizer()
+  def fit(self, train_loader, train_epochs, model_optim, criterion, device, ckpt_path, early_stopping):
+    '''criterion 사용되지 않음'''
+    # model_optim = self._select_optimizer() # 형님 추후 input하는 형태에 따라 수정 예정
+    time_now = time.time()
+    train_steps = len(train_loader)
     optimizer1 = model_optim(list(self.encoder.parameters())+list(self.decoder1.parameters()))
     optimizer2 = model_optim(list(self.encoder.parameters())+list(self.decoder2.parameters()))
-    for epoch in range(train_epochs):
-        for batch in train_loader:
+    for epoch in tqdm(range(train_epochs), desc='Epochs', position=0, leave=True):
+      iter_count = 0
+      train_loss = []
+
+      self.train()
+      epoch_time = time.time()
+      for batch_idx, batch in tqdm(enumerate(train_loader), desc='Batches', position=0, leave=False,
+                                        total=len(train_loader)):
+        iter_count += 1
+        batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size]) # (bsz, w_size)
+        batch=to_device(batch_reshape, device)
+        # batch = torch.tensor(batch)
           
-          batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size]) # (bsz, w_size)
-          batch=to_device(batch_reshape, device)
-          # batch = torch.tensor(batch)
-            
-          #Train AE1
-          # loss1,loss2 = self.training_step(batch,epoch+1)
-          z = self.encoder(batch)
-          w1 = self.decoder1(z)
-          # w2 = self.decoder2(z)
-          w3 = self.decoder2(self.encoder(w1))
-          loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
-          # loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
-          loss1.backward()
-          optimizer1.step()
-          optimizer1.zero_grad()
-            
-          #Train AE2
-          # loss1,loss2 = self.training_step(batch,epoch+1)
-          z = self.encoder(batch)
-          w1 = self.decoder1(z)
-          w2 = self.decoder2(z)
-          w3 = self.decoder2(self.encoder(w1))
-          # loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
-          loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
-          loss2.backward()
-          optimizer2.step()
-          optimizer2.zero_grad()
-            
-        # result = evaluate(self, val_loader, epoch+1, w_size)
-        # self.epoch_end(epoch, result)
-        # history.append(result)
+        #Train AE1
+        z = self.encoder(batch)
+        w1 = self.decoder1(z)
+        # w2 = self.decoder2(z)
+        w3 = self.decoder2(self.encoder(w1))
+        loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+        # loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+        loss1.backward()
+        optimizer1.step()
+        optimizer1.zero_grad()
+          
+        #Train AE2
+        z = self.encoder(batch)
+        w1 = self.decoder1(z)
+        w2 = self.decoder2(z)
+        w3 = self.decoder2(self.encoder(w1))
+        # loss1 = 1/(epoch+1)*torch.mean((batch-w1)**2)+(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+        loss2 = 1/(epoch+1)*torch.mean((batch-w2)**2)-(1-1/(epoch+1))*torch.mean((batch-w3)**2)
+        loss2.backward()
+        optimizer2.step()
+        optimizer2.zero_grad()
+
+        if (batch_idx + 1) % 100 == 0:
+          print("\titers: {0}, epoch: {1} | loss1: {2:.7f}| loss2: {2:.7f}".format(batch_idx + 1, epoch + 1, loss1.item(), loss2.item()))
+          speed = (time.time() - time_now) / iter_count
+          left_time = speed * ((train_epochs - epoch) * train_steps - batch_idx)
+          print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+          iter_count = 0
+          time_now = time.time()
+
+      train_loss.append(loss1.item()+loss2.item())
+      print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
+      train_loss = np.average(train_loss)
+      print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(epoch + 1, train_steps, train_loss))
+      early_stopping(train_loss, self.model, ckpt_path)
+      if early_stopping.early_stop:
+        print("Early stopping")
+        break      
+        
+    best_model_path = ckpt_path + '/' + 'checkpoint.pth'
+    self.model.load_state_dict(torch.load(best_model_path))
 
     return # history
   
   
-  def test(self, test_loader, alpha=.5, beta=.5):
+  def test(self, test_loader, criterion, device, alpha=.5, beta=.5):
     results=[]
-    for batch in test_loader:
+
+    self.eval()
+    for batch_idx, batch in tqdm(enumerate(test_loader), desc='Batches', position=0, leave=True,
+                                         total=len(test_loader)):
+      
       batch_reshape = batch['given'].view([batch['given'].shape[0],self.w_size])
       batch=to_device(batch_reshape,device)
       # batch = torch.tensor(batch)
@@ -84,6 +103,7 @@ class Model(nn.Module):
       results.append(alpha*torch.mean((batch-w1)**2,axis=1)+beta*torch.mean((batch-w2)**2,axis=1))
       y_pred=np.concatenate([torch.stack(results[:-1]).flatten().detach().cpu().numpy(),
                                     results[-1].flatten().detach().cpu().numpy()])
+      
     return y_pred
   
   # def epoch_end(self, epoch, result):
