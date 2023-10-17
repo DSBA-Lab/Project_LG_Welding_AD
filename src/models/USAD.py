@@ -79,13 +79,13 @@ class Model(nn.Module):
       print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
       train_loss = np.average(train_loss)
       print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(epoch + 1, train_steps, train_loss))
-      early_stopping(train_loss, self.model, ckpt_path)
+      early_stopping(train_loss, self, ckpt_path)
       if early_stopping.early_stop:
         print("Early stopping")
         break      
         
     best_model_path = ckpt_path + '/' + 'checkpoint.pth'
-    self.model.load_state_dict(torch.load(best_model_path))
+    self.load_state_dict(torch.load(best_model_path))
 
     return # history
   
