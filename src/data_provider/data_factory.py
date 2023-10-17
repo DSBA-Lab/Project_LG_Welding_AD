@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader
-
 from data_provider.dataset import BuildDataset
 from utils import slice_bead_data, get_window_bead_num, set_seed
 
@@ -27,15 +26,20 @@ def data_provider(args, flag):
 
     # 데이터의 bead를 detect하는 코드
     data_folder_list = Normal + Abnormal
-    num_train_dataset = num_train
+    num_train_dataset = args.num_train
     Train = pd.DataFrame(columns=['LO', 'BR', 'NIR', 'VIS', 'label', 'dataset_idx', 'bead_num'])
     Test = pd.DataFrame(columns=['LO', 'BR', 'NIR', 'VIS', 'label', 'dataset_idx', 'bead_num'])
+
     for i in range(num_train_dataset):
-        bead_i = slice_bead_data(str(data_folder_list[i]), set_bead_100=set_bead_100, set_end_to_end=set_end_to_end)
+        bead_i = slice_bead_data(str(data_folder_list[i]),
+                                 set_bead_100=args.set_bead_100,
+                                 set_end_to_end=args.set_end_to_end)
         Train = pd.concat([Train, bead_i])
 
     for i in range(num_train_dataset, len(data_folder_list)):
-        bead_i = slice_bead_data(str(data_folder_list[i]), set_bead_100=set_bead_100, set_end_to_end=set_end_to_end)
+        bead_i = slice_bead_data(str(data_folder_list[i]),
+                                 set_bead_100=args.set_bead_100,
+                                 set_end_to_end=args.set_end_to_end)
         Test = pd.concat([Test, bead_i])
 
     # dataset.py의 load_dataset 함수
@@ -55,8 +59,8 @@ def data_provider(args, flag):
     tst = scaler.transform(tst)
 
     # bead_num check
-    train_window_bead_num_list = get_window_bead_num(Train, window_size=window_size, slide_size=slide_size)
-    test_window_bead_num_list = get_window_bead_num(Test, window_size=window_size, slide_size=slide_size)
+    train_window_bead_num_list = get_window_bead_num(Train, window_size=args.window_size, slide_size=args.slide_size)
+    test_window_bead_num_list = get_window_bead_num(Test, window_size=args.window_size, slide_size=args.slide_size)
 
     print(f'Number of train_window_bead_num_list: {len(train_window_bead_num_list)}')
     print(f'Number of test_window_bead_num_list: {len(test_window_bead_num_list)}')
@@ -64,19 +68,18 @@ def data_provider(args, flag):
     # Dataloader.py에 있는 데이터셋 구축 부분
     # build dataset
     if flag == 'test':
-        dataset = BuildDataset(tst, tst_ts, window_size, slide_size,
-                               attacks=tst_label, model_type=model_type)
+        dataset = BuildDataset(tst, tst_ts, args.window_size, args.slide_size,
+                               attacks=tst_label, model_type=args.model_type)
     else:
-        dataset = BuildDataset(trn, trn_ts, window_size, slide_size,
-                               attacks=None, model_type=model_type)
+        dataset = BuildDataset(trn, trn_ts, args.window_size, args.slide_size,
+                               attacks=None, model_type=args.model_type)
 
 
-    dataloader = torch.utils.data.DataLoader(dataset,
-                                             batch_size=batch_size,
-                                             shuffle=shuffle_flag,
-                                             num_workers=loader_params['num_workers'],
-                                             pin_memory=loader_params['pin_memory'],
-                                             drop_last=drop_last)
+    dataloader = DataLoader(dataset,
+                            batch_size=batch_size,
+                            shuffle=shuffle_flag,
+                            num_workers=args.num_workers,
+                            drop_last=drop_last)
 
 
     return dataset, dataloader

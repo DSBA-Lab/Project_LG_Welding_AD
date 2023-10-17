@@ -20,8 +20,16 @@ if __name__=='__main__':
                         choices=['LSTM_VAE', 'USAD', 'MADGAN', 'TAnoGAN'])
 
     # data loader
+    parser.add_argument('--data_path', type=str, default='../data/230507', help='data directory')
     parser.add_argument('--data_polarity', type=str, required=True, choices=['Anode', 'Cathode'])
+    parser.add_argument('--num_train', type=int, default=28, help='number of train data')
     parser.add_argument('--model_type', type=str, required=True, choices=['reconstruction'])
+    parser.add_argument('--feature_num', type=int, default=4, help='feature number')
+    parser.add_argument('--window_size', type=int, default=100, help='window size')
+    parser.add_argument('--slide_size', type=int, default=100, help='slide size')
+    parser.add_argument('--set_bead_100', type=int, default=1)
+    parser.add_argument('--set_end_to_end', type=int, default=1)
+    parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
     # model define 수정 필요
     parser.add_argument('--seq_len', type=int, default=100, help='input sequence length')
@@ -29,6 +37,8 @@ if __name__=='__main__':
     parser.add_argument('--hidden_size', type=int, default=64, help='hidden size')
     parser.add_argument('--num_layers', type=int, default=3, help='number of layers')
     parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
+    parser.add_argument('--lr', type=float, default=0.002, help='learning rate')
+    parser.add_argument('--latent_length', type=int, default=20, help='latent length')
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')

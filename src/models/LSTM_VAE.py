@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 # Decoder class
 # Lambda class
 # Model(LSTM-VAE class)
-class MODEL(BaseEstimator, nn.Module):
+class Model(BaseEstimator, nn.Module):
     '''
     Variational recurrent auto-encoder.
 
@@ -37,27 +37,27 @@ class MODEL(BaseEstimator, nn.Module):
     :param dropout_rate: The probability of a node being dropped-out
     '''
 
-    def __init__(self, params):
-        super(MODEL, self).__init__()  ###MODEL 로변경해야함 . reference 사용안 할라면
+    def __init__(self, configs):
+        super(Model, self).__init__()  ###Model 로변경해야함 . reference 사용안 할라면
 
-        # params
-        # params
-        self.sequence_length = params['sequence_length']  # 100
+        # configs
+        # configs
+        self.sequence_length = configs.seq_len  # 100
         # torch.Size([32, 100, 25]) : batch크기, window 크기, feature_num 수
-        self.feature_num = params['feature_num']
-        self.hidden_size = params['hidden_size']
-        self.hidden_layer_depth = params['hidden_layer_depth']
-        self.latent_length = params['latent_length']
-        self.batch_size = params['batch_size']
-        self.rnn_type = params['rnn_type']
-        self.dropout_rate = params['dropout_rate']
+        self.feature_num = configs.feature_num
+        self.hidden_size = configs.hidden_size
+        self.hidden_layer_depth = configs.num_layers
+        self.latent_length = configs.latent_length
+        self.batch_size = configs.batch_size
+        self.rnn_type = configs.rnn_type
+        self.dropout_rate = configs.dropout
         self.dtype = torch.FloatTensor
-        self.lr = params['lr']
-        self.optim = params['optim']
-        self.criterion = params['criterion']
-        self.device = torch.device('cuda:{}'.format(params['gpu']) if torch.cuda.is_available() else 'cpu')
+        self.lr = configs.lr
+        # self.optim = configs['optim']
+        # self.criterion = configs['criterion']
+        # self.device = torch.device('cuda:{}'.format(configs['gpu']) if torch.cuda.is_available() else 'cpu')
 
-        print('Use GPU: cuda:{}'.format(params['gpu']) if torch.cuda.is_available() else 'cpu')
+        # print('Use GPU: cuda:{}'.format(configs['gpu']) if torch.cuda.is_available() else 'cpu')
         # models
         self.encoder = Encoder(number_of_features=self.feature_num,
                                hidden_size=self.hidden_size,
@@ -78,21 +78,21 @@ class MODEL(BaseEstimator, nn.Module):
                                rnn_type=self.rnn_type,
                                dtype=self.dtype)
 
-    def _select_optimizer(self):
-        if self.optim == 'adamw':
-            model_optim = optim.AdamW(self.parameters(), lr=self.lr)
-        elif self.optim == 'adam':
-            model_optim = optim.Adam(self.parameters(), lr=self.lr)
-        elif self.optim == 'sgd':
-            model_optim = optim.SGD(self.parameters(), lr=self.lr)
-        return model_optim
+    # def _select_optimizer(self):
+    #     if self.optim == 'adamw':
+    #         model_optim = optim.AdamW(self.parameters(), lr=self.lr)
+    #     elif self.optim == 'adam':
+    #         model_optim = optim.Adam(self.parameters(), lr=self.lr)
+    #     elif self.optim == 'sgd':
+    #         model_optim = optim.SGD(self.parameters(), lr=self.lr)
+    #     return model_optim
 
-    def _select_criterion(self):
-        if self.criterion == 'mse':
-            criterion = nn.MSELoss(reduction='none')
-        elif self.criterion == 'mae':
-            criterion = nn.L1Loss(reduction='none')
-        return criterion
+    # def _select_criterion(self):
+    #     if self.criterion == 'mse':
+    #         criterion = nn.MSELoss(reduction='none')
+    #     elif self.criterion == 'mae':
+    #         criterion = nn.L1Loss(reduction='none')
+    #     return criterion
 
     # init hidden
     def init_hidden(self, batch_size):
