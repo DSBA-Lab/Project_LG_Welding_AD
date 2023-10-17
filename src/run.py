@@ -103,6 +103,7 @@ if __name__=='__main__':
         torch.cuda.empty_cache()
 
     else:
+        setting = 'test'
         # setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
         #     args.task_name,
         #     args.model_id,
@@ -124,5 +125,5 @@ if __name__=='__main__':
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test=1)
+        exp.test(setting, args.window_size, task=args.task_name, test=1)
         torch.cuda.empty_cache()

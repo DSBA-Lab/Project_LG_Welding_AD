@@ -98,34 +98,35 @@ class ExpDeepLearning(Exp_Basic):
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        scores, attack, _ = self.model.test(test_loader, self.criterion)
+        criterion = self._select_criterion()
+        scores, attack, _ = self.model.test(test_loader, criterion, self.device)
 
         windows_scores = np.array([])
         if task == 'window_mean':
             for i in range(0, len(scores), window_size):
-                windows_mean_scores = np.append(windows_scores, np.mean(scores[i:i + window_size]))
+                windows_scores = np.append(windows_scores, np.mean(scores[i:i + window_size]))
         elif task == 'window_max':
             for i in range(0, len(scores), window_size):
-                windows_max_scores = np.append(windows_max_scores, np.max(scores[i:i + window_size]))
+                windows_scores = np.append(windows_scores, np.max(scores[i:i + window_size]))
 
         windows_labels = np.array([], dtype=float)  # 0, 1: max in window
         for i in range(0, len(attack), window_size):
             windows_labels = np.append(windows_labels, np.max(attack[i:i + window_size]))
 
         windows_labels = windows_labels.astype(float)
-        [f1, precision, recall, _, _, _, _, auroc, _], threshold = bf_search(windows_scores,
-                                                                             windows_labels,
-                                                                             start=min(
-                                                                                 windows_scores),
-                                                                             end=np.percentile(
-                                                                                 windows_scores,
-                                                                                 95),
-                                                                             step_num=10000,
-                                                                             K=100,
-                                                                             verbose=True)
+        [f1, precision, recall, _, _, _, _, _, _, _], threshold = bf_search(windows_scores,
+                                                                            windows_labels,
+                                                                            start=min(
+                                                                                windows_scores),
+                                                                            end=np.percentile(
+                                                                                windows_scores,
+                                                                                95),
+                                                                            step_num=1000,
+                                                                            K=100,
+                                                                            verbose=False)
 
         print("Threshold :", threshold)
-        result = f'F1-score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, AUROC: {auroc:.4f}'
+        result = f'F1-score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}'
         print(result)
 
         f = open("result_anomaly_detection.txt", 'a')
