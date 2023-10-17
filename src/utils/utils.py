@@ -351,3 +351,49 @@ def get_window_bead_num(
     for i in valid_idxs:
         window_bead_num_list.append(data['bead_num'][i:i+window_size].values)
     return window_bead_num_list
+
+
+def check_graph(xs, att=None, piece=1, threshold=None, custom_ylim=None):
+    """
+    anomaly score and anomaly label visualization
+
+    Parameters
+    ----------
+    xs : np.ndarray
+        anomaly scores
+    att : np.ndarray
+        anomaly labels
+    piece : int
+        number of figures to separate
+    threshold : float(default=None)
+        anomaly threshold
+
+    Return
+    ------
+    fig : plt.figure
+    """
+    l = xs.shape[0]
+    chunk = l // piece
+    fig, axs = plt.subplots(piece, figsize=(12, 4 * piece))
+    for i in range(piece):
+        L = i * chunk
+        R = min(L + chunk, l)
+        xticks = np.arange(L, R)
+        if piece == 1:
+            ax = axs
+        else:
+            ax = axs[i]
+        ax.plot(xticks, xs[L:R], color='#0C090A')
+        ymin, ymax = ax.get_ylim()
+        ymin = 0
+        ax.set_ylim(ymin, ymax)
+        if len(xs[L:R]) > 0 and att is not None:
+            ax.vlines(xticks[np.where(att[L:R] == 1)], ymin=ymin, ymax=ymax, color='#FED8B1',
+                          alpha=0.6, label='true anomaly')
+        ax.plot(xticks, xs[L:R], color='#0C090A', label='anomaly score')
+        if threshold is not None:
+            ax.axhline(y=threshold, color='r', linestyle='--', alpha=0.8, label=f'threshold:{threshold:.4f}')
+        ax.legend()
+        if custom_ylim is not None:
+            ax.set_ylim(custom_ylim)
+    return fig

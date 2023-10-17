@@ -3,7 +3,8 @@ from utils.utils import (
     get_window_bead_num,
     set_seed,
     calc_seq,
-    bf_search
+    bf_search,
+    check_graph
 )
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "get_window_bead_num",
     "set_seed",
     "calc_seq",
-    "bf_search"
+    "bf_search",
+    "check_graph"
     ]
