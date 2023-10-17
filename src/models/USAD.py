@@ -14,6 +14,7 @@ class Model(nn.Module):
     self.encoder = Encoder(self.w_size, self.z_size)
     self.decoder1 = Decoder(self.z_size, self.w_size)
     self.decoder2 = Decoder(self.z_size, self.w_size)
+    self.lr = configs.learning_rate
  
   def _select_optimizer(self):
     if self.optim == 'adamw':
@@ -29,8 +30,8 @@ class Model(nn.Module):
     # model_optim = self._select_optimizer() # 형님 추후 input하는 형태에 따라 수정 예정
     time_now = time.time()
     train_steps = len(train_loader)
-    optimizer1 = model_optim(list(self.encoder.parameters())+list(self.decoder1.parameters()))
-    optimizer2 = model_optim(list(self.encoder.parameters())+list(self.decoder2.parameters()))
+    optimizer1 = model_optim(list(self.encoder.parameters())+list(self.decoder1.parameters()), lr=self.lr)
+    optimizer2 = model_optim(list(self.encoder.parameters())+list(self.decoder2.parameters()), lr=self.lr)
     for epoch in tqdm(range(train_epochs), desc='Epochs', position=0, leave=True):
       iter_count = 0
       train_loss = []
