@@ -3,7 +3,7 @@ import pdb
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, adjustment
-from utils import bf_search
+from utils import bf_search, check_graph
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 import torch.multiprocessing
@@ -129,47 +129,14 @@ class ExpDeepLearning(Exp_Basic):
         result = f'F1-score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}'
         print(result)
 
-        f = open("result_anomaly_detection.txt", 'a')
+        f = open(folder_path + "result_anomaly_detection.txt", 'a')
         f.write(setting + "  \n")
         f.write(result)
         f.write('\n')
         f.write('\n')
         f.close()
 
-        pdb.set_trace()
+        score_graph = check_graph(windows_scores, windows_labels, 1, threshold)
+        score_graph.savefig(folder_path + 'score_graph.png')
 
-        # threshold = np.percentile(combined_energy, 100 - self.args.anomaly_ratio)
-        # print("Threshold :", threshold)
-        #
-        # # (3) evaluation on the test set
-        # pred = (test_energy > threshold).astype(int)
-        # test_labels = np.concatenate(test_labels, axis=0).reshape(-1)
-        # test_labels = np.array(test_labels)
-        # gt = test_labels.astype(int)
-        #
-        # print("pred:   ", pred.shape)
-        # print("gt:     ", gt.shape)
-        #
-        # # (4) detection adjustment
-        # gt, pred = adjustment(gt, pred)
-        #
-        # pred = np.array(pred)
-        # gt = np.array(gt)
-        # print("pred: ", pred.shape)
-        # print("gt:   ", gt.shape)
-        #
-        # accuracy = accuracy_score(gt, pred)
-        # precision, recall, f_score, support = precision_recall_fscore_support(gt, pred, average='binary')
-        # print("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
-        #     accuracy, precision,
-        #     recall, f_score))
-        #
-        # f = open("result_anomaly_detection.txt", 'a')
-        # f.write(setting + "  \n")
-        # f.write("Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
-        #     accuracy, precision,
-        #     recall, f_score))
-        # f.write('\n')
-        # f.write('\n')
-        # f.close()
         return
