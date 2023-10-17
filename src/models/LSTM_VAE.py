@@ -164,13 +164,13 @@ class Model(BaseEstimator, nn.Module):
                 train_loss.append(loss.item())
                 all_loss.append(loss.item())
 
-                if (batch_idx + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(batch_idx + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((train_epochs - epoch) * train_steps - batch_idx)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
-                    iter_count = 0
-                    time_now = time.time()
+                # if (batch_idx + 1) % 100 == 0:
+                #     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(batch_idx + 1, epoch + 1, loss.item()))
+                #     speed = (time.time() - time_now) / iter_count
+                #     left_time = speed * ((train_epochs - epoch) * train_steps - batch_idx)
+                #     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                #     iter_count = 0
+                #     time_now = time.time()
 
                 loss.backward()
                 model_optim.step()
@@ -188,13 +188,13 @@ class Model(BaseEstimator, nn.Module):
             # print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
             #     epoch + 1, train_steps, train_loss, vali_loss, test_loss))
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f}".format(epoch + 1, train_steps, train_loss))
-            early_stopping(train_loss, self.model, ckpt_path)
+            early_stopping(train_loss, self, ckpt_path) # vali_loss
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
 
         best_model_path = ckpt_path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
+        self.load_state_dict(torch.load(best_model_path))
 
 
         # plt.figure(figsize=(10, 5))
@@ -209,7 +209,7 @@ class Model(BaseEstimator, nn.Module):
 
         return # max_index
 
-    def test(self, test_loader, criterion):
+    def test(self, test_loader, criterion, device):
 
         dist = []
         attack = []
@@ -220,8 +220,8 @@ class Model(BaseEstimator, nn.Module):
         with torch.no_grad():
             for batch_idx, batch in tqdm(enumerate(test_loader), desc='Batches', position=0, leave=True,
                                          total=len(test_loader)):
-                batch_x = batch['given'].float().to(self.device)
-                batch_y = batch['answer'].float().to(self.device)
+                batch_x = batch['given'].float().to(device)
+                batch_y = batch['answer'].float().to(device)
 
                 predictions = self.forward(batch_x)
                 score = criterion(predictions[0], batch_y).cpu().detach().numpy()

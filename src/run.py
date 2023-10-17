@@ -15,7 +15,10 @@ if __name__=='__main__':
 
     # basic config
     parser.add_argument('--seed', type=int, default=72, help="set randomness")
+    parser.add_argument('--task_name', type=str, required=True, default='window_mean',
+                        help='task name, options:[window_mean, window_max]')
     parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
+    parser.add_argument('--train_only', type=int, default=0, help='only train')
     parser.add_argument('--model', type=str, required=True,
                         choices=['LSTM_VAE', 'USAD', 'MADGAN', 'TAnoGAN'])
 
@@ -45,7 +48,7 @@ if __name__=='__main__':
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
     parser.add_argument('--train_epochs', type=int, default=30, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
-    parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
+    parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -92,11 +95,11 @@ if __name__=='__main__':
         exp = Exp(args)
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
         exp.train(setting)
-        exp.valid_test(setting)
+        # exp.valid_test(setting)
 
         if not args.train_only:
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
+            exp.test(setting, args.window_size, task=args.task_name)
         torch.cuda.empty_cache()
 
     else:

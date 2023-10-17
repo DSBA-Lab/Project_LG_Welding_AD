@@ -3,6 +3,7 @@ import pdb
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, adjustment
+from utils import bf_search
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score
 import torch.multiprocessing
@@ -64,15 +65,12 @@ class ExpDeepLearning(Exp_Basic):
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
         # vali_data, vali_loader = self._get_data(flag='val')
-        test_data, test_loader = self._get_data(flag='test')
+        # test_data, test_loader = self._get_data(flag='test')
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
             os.makedirs(path)
 
-        time_now = time.time()
-
-        train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
@@ -86,103 +84,59 @@ class ExpDeepLearning(Exp_Basic):
                        path,
                        early_stopping)
 
-        pdb.set_trace()
-
-        for epoch in range(self.args.train_epochs):
-            iter_count = 0
-            train_loss = []
-
-            self.model.train()
-            epoch_time = time.time()
-            for i, (batch_x, batch_y) in enumerate(train_loader):
-                iter_count += 1
-                model_optim.zero_grad()
-
-                batch_x = batch_x.float().to(self.device)
-
-                outputs = self.model(batch_x, None, None, None)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:]
-                loss = criterion(outputs, batch_x)
-                train_loss.append(loss.item())
-
-                if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
-                    iter_count = 0
-                    time_now = time.time()
-
-                loss.backward()
-                model_optim.step()
-
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
-            train_loss = np.average(train_loss)
-            vali_loss = self.vali(vali_data, vali_loader, criterion)
-            test_loss = self.vali(test_data, test_loader, criterion)
-
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
-            early_stopping(vali_loss, self.model, path)
-            if early_stopping.early_stop:
-                print("Early stopping")
-                break
-            adjust_learning_rate(model_optim, epoch + 1, self.args)
-
-        best_model_path = path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
-
         return self.model
 
-    def test(self, setting, test=0):
+    def test(self, setting, window_size, test=0, task='window_mean'):
         test_data, test_loader = self._get_data(flag='test')
-        train_data, train_loader = self._get_data(flag='train')
+        # train_data, train_loader = self._get_data(flag='train')
         if test:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
 
-        attens_energy = []
+        # attens_energy = []
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         scores, attack, _ = self.model.test(test_loader, self.criterion)
+
+        windows_scores = np.array([])
+        if task == 'window_mean':
+            for i in range(0, len(scores), window_size):
+                windows_mean_scores = np.append(windows_scores, np.mean(scores[i:i + window_size]))
+        elif task == 'window_max':
+            for i in range(0, len(scores), window_size):
+                windows_max_scores = np.append(windows_max_scores, np.max(scores[i:i + window_size]))
+
+        windows_labels = np.array([], dtype=float)  # 0, 1: max in window
+        for i in range(0, len(attack), window_size):
+            windows_labels = np.append(windows_labels, np.max(attack[i:i + window_size]))
+
+        windows_labels = windows_labels.astype(float)
+        [f1, precision, recall, _, _, _, _, auroc, _], threshold = bf_search(windows_scores,
+                                                                             windows_labels,
+                                                                             start=min(
+                                                                                 windows_scores),
+                                                                             end=np.percentile(
+                                                                                 windows_scores,
+                                                                                 95),
+                                                                             step_num=10000,
+                                                                             K=100,
+                                                                             verbose=True)
+
+        print("Threshold :", threshold)
+        result = f'F1-score: {f1:.4f}, Precision: {precision:.4f}, Recall: {recall:.4f}, AUROC: {auroc:.4f}'
+        print(result)
+
+        f = open("result_anomaly_detection.txt", 'a')
+        f.write(setting + "  \n")
+        f.write(result)
+        f.write('\n')
+        f.write('\n')
+        f.close()
+
         pdb.set_trace()
 
-        self.anomaly_criterion = nn.MSELoss(reduce=False)
-
-        # (1) stastic on the train set
-        with torch.no_grad():
-            for i, (batch_x, batch_y) in enumerate(train_loader):
-                batch_x = batch_x.float().to(self.device)
-                # reconstruction
-                outputs = self.model(batch_x, None, None, None)
-                # criterion
-                score = torch.mean(self.anomaly_criterion(batch_x, outputs), dim=-1)
-                score = score.detach().cpu().numpy()
-                attens_energy.append(score)
-
-        attens_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
-        train_energy = np.array(attens_energy)
-
-        # (2) find the threshold
-        attens_energy = []
-        test_labels = []
-        for i, (batch_x, batch_y) in enumerate(test_loader):
-            batch_x = batch_x.float().to(self.device)
-            # reconstruction
-            outputs = self.model(batch_x, None, None, None)
-            # criterion
-            score = torch.mean(self.anomaly_criterion(batch_x, outputs), dim=-1)
-            score = score.detach().cpu().numpy()
-            attens_energy.append(score)
-            test_labels.append(batch_y)
-
-        attens_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
-        test_energy = np.array(attens_energy)
-        combined_energy = np.concatenate([train_energy, test_energy], axis=0)
         threshold = np.percentile(combined_energy, 100 - self.args.anomaly_ratio)
         print("Threshold :", threshold)
 
