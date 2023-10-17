@@ -52,7 +52,7 @@ class Model(BaseEstimator, nn.Module):
         self.rnn_type = configs.rnn_type
         self.dropout_rate = configs.dropout
         self.dtype = torch.FloatTensor
-        self.lr = configs.lr
+        self.lr = configs.learning_rate
         # self.optim = configs['optim']
         # self.criterion = configs['criterion']
         # self.device = torch.device('cuda:{}'.format(configs['gpu']) if torch.cuda.is_available() else 'cpu')

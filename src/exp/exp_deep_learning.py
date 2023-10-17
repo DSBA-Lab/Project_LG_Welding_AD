@@ -4,8 +4,6 @@ from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
 from utils.tools import EarlyStopping, adjust_learning_rate, adjustment
 from utils import bf_search, check_graph
-from sklearn.metrics import precision_recall_fscore_support
-from sklearn.metrics import accuracy_score
 import torch.multiprocessing
 
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -13,7 +11,6 @@ import torch
 import torch.nn as nn
 from torch import optim
 import os
-import time
 import warnings
 import numpy as np
 
@@ -93,7 +90,6 @@ class ExpDeepLearning(Exp_Basic):
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
 
-        # attens_energy = []
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)

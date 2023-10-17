@@ -59,8 +59,8 @@ def data_provider(args, flag):
     tst = scaler.transform(tst)
 
     # bead_num check
-    train_window_bead_num_list = get_window_bead_num(Train, window_size=args.window_size, slide_size=args.slide_size)
-    test_window_bead_num_list = get_window_bead_num(Test, window_size=args.window_size, slide_size=args.slide_size)
+    train_window_bead_num_list = get_window_bead_num(Train, window_size=args.seq_len, slide_size=args.slide_size)
+    test_window_bead_num_list = get_window_bead_num(Test, window_size=args.seq_len, slide_size=args.slide_size)
 
     print(f'Number of train_window_bead_num_list: {len(train_window_bead_num_list)}')
     print(f'Number of test_window_bead_num_list: {len(test_window_bead_num_list)}')
@@ -68,10 +68,10 @@ def data_provider(args, flag):
     # Dataloader.py에 있는 데이터셋 구축 부분
     # build dataset
     if flag == 'test':
-        dataset = BuildDataset(tst, tst_ts, args.window_size, args.slide_size,
+        dataset = BuildDataset(tst, tst_ts, args.seq_len, args.slide_size,
                                attacks=tst_label, model_type=args.model_type)
     else:
-        dataset = BuildDataset(trn, trn_ts, args.window_size, args.slide_size,
+        dataset = BuildDataset(trn, trn_ts, args.seq_len, args.slide_size,
                                attacks=None, model_type=args.model_type)
 
 

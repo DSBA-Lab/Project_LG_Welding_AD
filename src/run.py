@@ -1,12 +1,7 @@
 import argparse
-import os
-import sys
-import random
-import numpy as np
-from omegaconf import OmegaConf
 import torch
 
-from utils import slice_bead_data, get_window_bead_num, set_seed
+from utils import set_seed
 from exp import ExpDeepLearning
 
 if __name__=='__main__':
@@ -28,7 +23,6 @@ if __name__=='__main__':
     parser.add_argument('--num_train', type=int, default=28, help='number of train data')
     parser.add_argument('--model_type', type=str, required=True, choices=['reconstruction'])
     parser.add_argument('--feature_num', type=int, default=4, help='feature number')
-    parser.add_argument('--window_size', type=int, default=100, help='window size')
     parser.add_argument('--slide_size', type=int, default=100, help='slide size')
     parser.add_argument('--set_bead_100', type=int, default=1)
     parser.add_argument('--set_end_to_end', type=int, default=1)
@@ -40,7 +34,6 @@ if __name__=='__main__':
     parser.add_argument('--hidden_size', type=int, default=64, help='hidden size')
     parser.add_argument('--num_layers', type=int, default=3, help='number of layers')
     parser.add_argument('--dropout', type=float, default=0.3, help='dropout rate')
-    parser.add_argument('--lr', type=float, default=0.002, help='learning rate')
     parser.add_argument('--latent_length', type=int, default=20, help='latent length')
 
     # optimization
@@ -75,22 +68,17 @@ if __name__=='__main__':
 
     if args.is_training:
         # setting record of experiments
-        setting = 'test'
-        # setting = '{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
-        #     args.model,
-        #     args.features,
-        #     args.seq_len,
-        #     args.label_len,
-        #     args.pred_len,
-        #     args.d_model,
-        #     args.n_heads,
-        #     args.e_layers,
-        #     args.d_layers,
-        #     args.d_ff,
-        #     args.factor,
-        #     args.embed,
-        #     args.distil,
-        #     args.des, ii)
+        setting = '{}_{}_{}_ft{}_wl{}_sl{}_hs{}_nl{}_dr{}_ll{}'.format(
+            args.model,
+            args.data_polarity,
+            args.task_name,
+            args.feature_num,
+            args.seq_len,
+            args.slide_size,
+            args.hidden_size,
+            args.num_layers,
+            args.dropout,
+            args.latent_length)
 
         exp = Exp(args)
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -99,31 +87,23 @@ if __name__=='__main__':
 
         if not args.train_only:
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting, args.window_size, task=args.task_name)
+            exp.test(setting, args.seq_len, task=args.task_name)
         torch.cuda.empty_cache()
 
     else:
-        setting = 'test'
-        # setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
-        #     args.task_name,
-        #     args.model_id,
-        #     args.model,
-        #     args.data,
-        #     args.features,
-        #     args.seq_len,
-        #     args.label_len,
-        #     args.pred_len,
-        #     args.d_model,
-        #     args.n_heads,
-        #     args.e_layers,
-        #     args.d_layers,
-        #     args.d_ff,
-        #     args.factor,
-        #     args.embed,
-        #     args.distil,
-        #     args.des, ii)
+        setting = '{}_{}_{}_ft{}_wl{}_sl{}_hs{}_nl{}_dr{}_ll{}'.format(
+            args.model,
+            args.data_polarity,
+            args.task_name,
+            args.feature_num,
+            args.seq_len,
+            args.slide_size,
+            args.hidden_size,
+            args.num_layers,
+            args.dropout,
+            args.latent_length)
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, args.window_size, task=args.task_name, test=1)
+        exp.test(setting, args.seq_len, task=args.task_name, test=1)
         torch.cuda.empty_cache()

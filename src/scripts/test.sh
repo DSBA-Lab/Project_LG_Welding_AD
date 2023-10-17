@@ -9,7 +9,7 @@ rnn_type=LSTM
 epoch=30
 
 python run.py \
---is_training 0 \
+--is_training 1 \
 --task_name $task_name \
 --model $model \
 --data_polarity $data_polarity \
