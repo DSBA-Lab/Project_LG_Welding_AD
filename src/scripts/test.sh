@@ -6,6 +6,7 @@ model=LSTM_VAE
 model_type=reconstruction
 seq_len=100
 rnn_type=LSTM
+learning_rate=0.002
 epoch=30
 
 python run.py \
@@ -17,3 +18,4 @@ python run.py \
 --model_type $model_type \
 --seq_len $seq_len \
 --rnn_type $rnn_type \
+--learning_rate $learning_rate \

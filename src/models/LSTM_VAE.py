@@ -135,7 +135,7 @@ class Model(BaseEstimator, nn.Module):
         best_metrics = None
 
         train_steps = len(train_loader)
-        # model_optim = self._select_optimizer()
+        model_optim = model_optim(self.parameters(), lr=self.lr)
         # criterion = self._select_criterion()
         all_loss = []
 

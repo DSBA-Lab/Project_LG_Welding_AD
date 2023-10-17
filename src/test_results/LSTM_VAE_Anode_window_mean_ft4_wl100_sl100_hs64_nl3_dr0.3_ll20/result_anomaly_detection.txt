@@ -1,0 +1,6 @@
+LSTM_VAE_Anode_window_mean_ft4_wl100_sl100_hs64_nl3_dr0.3_ll20  
+F1-score: 0.5405, Precision: 0.7334, Recall: 0.4280
+
+LSTM_VAE_Anode_window_mean_ft4_wl100_sl100_hs64_nl3_dr0.3_ll20  
+F1-score: 0.8381, Precision: 0.7217, Recall: 0.9994
+
