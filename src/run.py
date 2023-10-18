@@ -52,7 +52,12 @@ if __name__=='__main__':
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     parser.add_argument('--devices', type=str, default='0,1', help='device ids of multile gpus')
-
+    
+    # madgan 추가 config
+    parser.add_argument('--lam', type=float, default=0.5, help='lambda for DR score')
+    parser.add_argument('--z_optim_iter', type=int, default=25, help='iteration to obtain optimal Z')
+    parser.add_argument('--dr_loss_method', type=str, default='approximation', help='dr_loss_method calculation method')
+    
     args = parser.parse_args()
     args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
