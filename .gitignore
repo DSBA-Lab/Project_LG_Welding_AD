@@ -166,7 +166,7 @@ cython_debug/
 .idea/
 
 data/
-./src/.ipynb_checkpoints/
-./src/checkpoints/
+src/.ipynb_checkpoints/
+src/checkpoints/
 tsad/models
 etc/
