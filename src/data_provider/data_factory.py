@@ -81,5 +81,6 @@ def data_provider(args, flag):
                             num_workers=args.num_workers,
                             drop_last=drop_last)
 
-
+    sample = next(iter(dataloader))
+    print(f'input shape: {sample["given"].shape}')
     return dataset, dataloader
