@@ -1,3 +1,0 @@
-test  
-F1-score: 0.5380, Precision: 0.7302, Recall: 0.4259
-
