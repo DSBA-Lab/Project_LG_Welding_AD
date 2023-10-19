@@ -168,5 +168,5 @@ cython_debug/
 data/
 ./src/.ipynb_checkpoints/
 ./src/checkpoints/
-tsad/
+tsad/models
 etc/
