@@ -23,20 +23,6 @@ class Model(BaseEstimator, nn.Module):
         configs
     ):
         super(Model, self).__init__()
-        '''
-        Arguments
-        ---------
-        - trainloader: train dataset
-        - validloader: test set to evaluate in train [default: None]
-        - logdir: directory to save
-        - epochs: epochs
-        - criterions: model critetion
-        - optimizers: model optimizer
-        - schedulers: model scheduler
-        - tensorboard: TensorBoard
-        - last_metrics: latest best model metrics for checkpoint 
-        - device: device to use [cuda:i, cpu], i=0, ...,n
-        '''
 
         self.sequence_length = configs.seq_len  # 100
         # torch.Size([32, 100, 25]) : batch크기, window 크기, feature_num 수
@@ -268,32 +254,32 @@ class Model(BaseEstimator, nn.Module):
         total_time = datetime.timedelta(seconds=end)
         print('\nFinish Train: Training Time: {}\n'.format(total_time))
 
-        # Make history 
-        self.history = {}
-        self.history['train'] = []
-        self.history['train'].append({
-            'loss':train_loss_lst,
-            'gen_loss':train_gen_loss_lst,
-            'dis_loss':train_dis_loss_lst,
-            'dis_real_loss':train_dis_real_loss_lst,
-            'dis_fake_loss':train_dis_fake_loss_lst
-        })
+        # # Make history 
+        # self.history = {}
+        # self.history['train'] = []
+        # self.history['train'].append({
+        #     'loss':train_loss_lst,
+        #     'gen_loss':train_gen_loss_lst,
+        #     'dis_loss':train_dis_loss_lst,
+        #     'dis_real_loss':train_dis_real_loss_lst,
+        #     'dis_fake_loss':train_dis_fake_loss_lst
+        # })
         
-        if self.validloader:
-            self.history['validation'] = []
-            self.history['validation'].append({
-                'loss':val_loss_lst,
-                'gen_loss':val_gen_loss_lst,
-                'dis_loss':val_dis_loss_lst,
-                'dis_real_loss':val_dis_real_loss_lst,
-                'dis_fake_loss':val_dis_fake_loss_lst
-            })
+        # if self.validloader:
+        #     self.history['validation'] = []
+        #     self.history['validation'].append({
+        #         'loss':val_loss_lst,
+        #         'gen_loss':val_gen_loss_lst,
+        #         'dis_loss':val_dis_loss_lst,
+        #         'dis_real_loss':val_dis_real_loss_lst,
+        #         'dis_fake_loss':val_dis_fake_loss_lst
+        #     })
 
-        self.history['time'] = []
-        self.history['time'].append({
-            'epoch':epoch_time_lst,
-            'total':str(total_time)
-        })
+        # self.history['time'] = []
+        # self.history['time'].append({
+        #     'epoch':epoch_time_lst,
+        #     'total':str(total_time)
+        # })
 
     
     def test(self, test_loader, criterion, device):
@@ -323,6 +309,7 @@ class Model(BaseEstimator, nn.Module):
             batch_x = batch['given'].float().to(device)
             attack.append(batch['attack'].squeeze().numpy())
         
+        attack = np.concatenate(attack).flatten()
         
         for batch_idx, inputs in enumerate(test_loader):
             inputs = inputs['given']
@@ -333,28 +320,24 @@ class Model(BaseEstimator, nn.Module):
             dr_loss_list.append(dr_loss)
 
         
-        dr_loss_arr = np.zeros(len(test_loader.dataset))
-        
+        # dr_loss_arr = np.zeros(len(test_loader.dataset))
+        dr_loss_arr = []
         # method -> dr_loss_method 로 변경 필요
         if self.dr_loss_method == 'approximation':
             # method 1 : 근사법
             # 각 윈도우별 dr_score를 확인해본 결과 같은 timestamp에 대한 data면 dr_score의 차이가 크게 없음
             # 따라서 누적으로 window에 dr_score를 추가하는 방식으로 최종 dr_score를 산출
-            # 각 window의 첫번째부터 slide size까지의 value를 dr_score에 추가
+            # 각 window의 value를 dr_score에 추가
+            
             
             index = 0
-
             for batch_idx in range(len(test_loader)):
-                for window_value in dr_loss_list[batch_idx]:
-                    rest_value = len(window_value)
-                    if rest_value < slide_size:
-                        print("last window")
-                        dr_loss_arr[index:index+rest_value] = window_value[:rest_value]
-                    else:
-                        dr_loss_arr[index:index+slide_size] = window_value[:slide_size]
-                    print(index)
-                    index = index + slide_size
-            
+                for window in dr_loss_list[batch_idx]:
+                    dr_loss_arr.append(np.array(window))
+                    index +=1
+                print(index)
+                
+            dr_loss_arr = np.concatenate(dr_loss_arr).flatten()
 
                         
         elif self.dr_loss_method == 'paper':
