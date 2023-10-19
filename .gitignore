@@ -166,3 +166,7 @@ cython_debug/
 .idea/
 
 data/
+./src/.ipynb_checkpoints/
+./src/checkpoints/
+tsad/
+etc/
